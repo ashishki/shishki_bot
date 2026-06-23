@@ -118,7 +118,7 @@ class Slot(Base):
         DateTime(timezone=True), default=utc_now, nullable=False
     )
 
-    booking: Mapped[Booking | None] = relationship(back_populates="slot")
+    bookings: Mapped[list[Booking]] = relationship(back_populates="slot")
 
 
 class Booking(Base):
@@ -126,9 +126,7 @@ class Booking(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"), nullable=False)
-    slot_id: Mapped[int] = mapped_column(
-        ForeignKey("slots.id"), unique=True, nullable=False
-    )
+    slot_id: Mapped[int] = mapped_column(ForeignKey("slots.id"), nullable=False)
     service: Mapped[str] = mapped_column(String(255), nullable=False)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -150,7 +148,7 @@ class Booking(Base):
     )
 
     client: Mapped[Client] = relationship(back_populates="bookings")
-    slot: Mapped[Slot] = relationship(back_populates="booking")
+    slot: Mapped[Slot] = relationship(back_populates="bookings")
     status_history: Mapped[list[BookingStatusHistory]] = relationship(
         back_populates="booking", cascade="all, delete-orphan"
     )

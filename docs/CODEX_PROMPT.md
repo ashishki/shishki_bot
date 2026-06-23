@@ -8,10 +8,10 @@ Phase: 3
 ## Current State
 
 - Phase: 3
-- Baseline: T08 complete; client booking handler tests pass with 30 total tests.
+- Baseline: T09 complete; admin booking/edit tests pass with 36 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (30 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (36 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,14 +29,13 @@ Phase: 3
 
 ## Next Task
 
-T09: Admin Manual Booking And Edits
+T10: Reminder Scheduler
 
 Before editing, read:
 
-- `docs/tasks.md#t09-admin-manual-booking-and-edits`
-- `docs/spec.md#feature-4---admin-booking-management`
+- `docs/tasks.md#t10-reminder-scheduler`
+- `docs/spec.md#feature-5---reminders-and-notifications`
 - `docs/IMPLEMENTATION_CONTRACT.md`
-- `docs/IMPLEMENTATION_CONTRACT.md#admin-authorization`
 - `docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity`
 
 ## Verification
@@ -57,7 +56,7 @@ python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-
 
 ## Fix Queue
 
-empty - no P0/P1/P2 findings remain from the T08 targeted light review.
+empty - no P0/P1/P2 findings remain from the T09 targeted review.
 
 ## Capability State
 
@@ -125,6 +124,10 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   haircut slot selection with explicit confirmation, complex-service redirect,
   active booking lookup, unknown-input fallback, and runtime async DB session
   dispatch coverage.
+- 2026-06-23 - T09 Admin Manual Booking And Edits: added admin-created
+  complex bookings, reschedule/cancel/detail edit services, status history,
+  admin allowlist wrappers, client notification logging, cancelled-slot reuse,
+  and collision/error regression coverage.
 
 ## Completed Bootstrap Work
 

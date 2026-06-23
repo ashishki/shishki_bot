@@ -66,6 +66,24 @@ def booking_cancelled_message(
     return "\n".join(lines)
 
 
+def booking_updated_message(
+    booking: Booking,
+    *,
+    timezone: ZoneInfo = DEFAULT_MESSAGE_TIMEZONE,
+) -> str:
+    return "\n".join(
+        [
+            "Booking updated",
+            f"Service: {booking.service}",
+            f"Date: {_format_date(booking.starts_at, timezone)}",
+            f"Time: {_format_time(booking.starts_at, timezone)}",
+            f"Place: {booking.place}",
+            f"Duration: {booking.duration_minutes} minutes",
+            f"Price: {_format_money(booking.price_amount)} GEL",
+        ]
+    )
+
+
 def admin_new_booking_message(
     booking: Booking,
     *,

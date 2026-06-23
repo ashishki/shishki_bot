@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
+
+from sqlalchemy.orm import Session
 
 from app.bot.keyboards import (
     ADMIN_CALLBACK_PREFIX,
@@ -12,7 +15,20 @@ from app.bot.keyboards import (
     admin_menu_buttons,
     parse_admin_callback_data,
 )
+from app.bot.messages import (
+    booking_cancelled_message,
+    booking_rescheduled_message,
+    booking_updated_message,
+)
 from app.config import Settings
+from app.db.models import Booking, NotificationLog
+from app.services.booking import (
+    cancel_booking_by_admin,
+    create_manual_booking,
+    reschedule_booking,
+    update_booking_details_by_admin,
+)
+from app.services.notifications import NotificationSender, send_client_notification
 
 ADMIN_MENU_TEXT = "Admin menu"
 ADMIN_ACCESS_DENIED_TEXT = "Admin access denied"
@@ -33,6 +49,12 @@ class AdminMenuResponse:
 class AdminActionResponse:
     action: AdminMenuAction
     text: str
+
+
+@dataclass(frozen=True, slots=True)
+class AdminBookingMutationResponse:
+    booking: Booking
+    notification_log: NotificationLog | None = None
 
 
 def is_admin_user(telegram_user_id: int | None, settings: Settings) -> bool:
@@ -78,6 +100,139 @@ def resolve_admin_action(
     callback_payload: str | None,
 ) -> AdminMenuAction:
     return handle_admin_callback(telegram_user_id, settings, callback_payload).action
+
+
+def handle_admin_manual_booking(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    client_id: int,
+    slot_id: int,
+    service: str,
+    duration_minutes: int,
+    price_amount: Decimal,
+    place: str | None = None,
+    notes: str | None = None,
+) -> AdminBookingMutationResponse:
+    require_admin_user(telegram_user_id, settings)
+    booking = create_manual_booking(
+        session,
+        client_id=client_id,
+        slot_id=slot_id,
+        service=service,
+        duration_minutes=duration_minutes,
+        price_amount=price_amount,
+        place=place,
+        notes=notes,
+    )
+    return AdminBookingMutationResponse(booking=booking)
+
+
+def handle_admin_reschedule_booking(
+    session: Session,
+    settings: Settings,
+    *,
+    sender: NotificationSender,
+    telegram_user_id: int | None,
+    booking_id: int,
+    new_slot_id: int,
+    reason: str | None = None,
+) -> AdminBookingMutationResponse:
+    require_admin_user(telegram_user_id, settings)
+    booking = reschedule_booking(
+        session,
+        booking_id=booking_id,
+        new_slot_id=new_slot_id,
+        reason=reason,
+    )
+    notification_log = send_client_notification(
+        session,
+        sender=sender,
+        booking=booking,
+        kind="booking_rescheduled",
+        text=booking_rescheduled_message(booking, timezone=settings.timezone_info),
+    )
+    return AdminBookingMutationResponse(
+        booking=booking,
+        notification_log=notification_log,
+    )
+
+
+def handle_admin_cancel_booking(
+    session: Session,
+    settings: Settings,
+    *,
+    sender: NotificationSender,
+    telegram_user_id: int | None,
+    booking_id: int,
+    reason: str | None = None,
+) -> AdminBookingMutationResponse:
+    require_admin_user(telegram_user_id, settings)
+    booking = cancel_booking_by_admin(
+        session,
+        booking_id=booking_id,
+        reason=reason,
+    )
+    notification_log = send_client_notification(
+        session,
+        sender=sender,
+        booking=booking,
+        kind="booking_cancelled",
+        text=booking_cancelled_message(
+            booking,
+            reason=reason,
+            timezone=settings.timezone_info,
+        ),
+    )
+    return AdminBookingMutationResponse(
+        booking=booking,
+        notification_log=notification_log,
+    )
+
+
+def handle_admin_update_booking_details(
+    session: Session,
+    settings: Settings,
+    *,
+    sender: NotificationSender | None = None,
+    telegram_user_id: int | None,
+    booking_id: int,
+    service: str | None = None,
+    duration_minutes: int | None = None,
+    price_amount: Decimal | None = None,
+    place: str | None = None,
+    notes: str | None = None,
+) -> AdminBookingMutationResponse:
+    require_admin_user(telegram_user_id, settings)
+    should_notify = any(
+        value is not None for value in (service, duration_minutes, price_amount, place)
+    )
+    if should_notify and sender is None:
+        raise ValueError("sender is required for client-visible booking changes")
+
+    booking = update_booking_details_by_admin(
+        session,
+        booking_id=booking_id,
+        service=service,
+        duration_minutes=duration_minutes,
+        price_amount=price_amount,
+        place=place,
+        notes=notes,
+    )
+    notification_log = None
+    if should_notify:
+        notification_log = send_client_notification(
+            session,
+            sender=sender,
+            booking=booking,
+            kind="booking_updated",
+            text=booking_updated_message(booking, timezone=settings.timezone_info),
+        )
+    return AdminBookingMutationResponse(
+        booking=booking,
+        notification_log=notification_log,
+    )
 
 
 def build_admin_router(settings: Settings):

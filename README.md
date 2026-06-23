@@ -5,10 +5,10 @@ bot for one stylist.
 
 ## Current Status
 
-- Phase 3 is active. T08 is complete: client start, booking, complex-service
-  redirect, and active-booking handler tests are in place.
-- Next task: T09 admin manual booking and edits.
-- Cycle 4 T07 admin auth review findings were closed before T08.
+- Phase 3 is active. T09 is complete: admin manual booking, reschedule,
+  cancellation, and detail-edit tests are in place.
+- Next task: T10 reminder scheduler.
+- Cycle 5 T09 booking/edit review findings were closed before T10.
 - Production v1 remains deterministic: no production LLM behavior or external
   skills are planned.
 

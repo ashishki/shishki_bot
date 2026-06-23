@@ -284,6 +284,8 @@ Owner:      codex
 Phase:      3
 Type:       none
 Depends-On: T05 T06 T07
+Status:     [x] complete
+Completed:  2026-06-23
 
 Objective: |
   Implement admin-created bookings and admin edits for reschedule, cancellation,
@@ -301,12 +303,17 @@ Acceptance-Criteria:
     test: "tests/test_admin_booking.py::test_admin_cancel_notifies_client"
 
 Files:
+  - app/db/models.py
   - app/services/booking.py
+  - app/bot/messages.py
   - app/bot/handlers/admin.py
   - tests/test_admin_booking.py
 
 Context-Refs:
   - docs/spec.md#feature-4---admin-booking-management
+  - docs/IMPLEMENTATION_CONTRACT.md#booking-integrity
+  - docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity
+  - docs/IMPLEMENTATION_CONTRACT.md#admin-authorization
 
 ## T10: Reminder Scheduler
 

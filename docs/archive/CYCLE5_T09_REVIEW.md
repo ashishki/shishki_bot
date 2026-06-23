@@ -41,7 +41,7 @@ No - no P0/P1/P2 findings remain for T09 after targeted fixes and full verificat
 ## README-First Index Status
 | Changed boundary | README path | Status | Notes |
 |------------------|-------------|--------|-------|
-| repo | `README.md` | updated | Current status now points to T10 after T09 completion. |
+| repo | `README.md` | current | Repository index remains present for canonical project and verification artifacts. |
 | booking service | n/a | justified | Booking mutation behavior is covered by task, contract, tests, and this review report. |
 | admin handlers | n/a | justified | Admin mutation wrappers remain compact and covered by focused tests. |
 

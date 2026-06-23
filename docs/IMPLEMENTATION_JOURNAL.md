@@ -153,3 +153,21 @@ Status: append-only
 - Evidence collected: client handler tests passed; async callback dispatch coverage passed; full pytest passed; ruff check; ruff format --check; integrity check; skill security gate.
 - Follow-ups: T09 should build admin-created complex bookings and admin edits on the same booking/notification service boundaries.
 - Notes: Targeted light review found runtime session wiring and confirmation-step gaps; both were fixed before completion. Final verification passed with 30 tests.
+
+### 2026-06-23 - T09 - Admin Manual Booking And Edits
+
+- Scope: `app/db/models.py`, `app/services/booking.py`, `app/bot/messages.py`, `app/bot/handlers/admin.py`, `tests/test_admin_booking.py`, `docs/CODEX_PROMPT.md`, `docs/tasks.md`, `docs/EVIDENCE_INDEX.md`
+- Why: Add admin-created complex bookings plus admin reschedule, cancel, and detail-edit behavior with audit history and client notification integrity.
+- Decisions applied: `D-002`, `D-003`, `D-004`
+- Evidence collected: admin booking tests passed; booking/model regression tests passed; full pytest passed; ruff check; ruff format --check; integrity check; skill security gate.
+- Follow-ups: T10 should build reminders using the notification log and status model already established.
+- Notes: Targeted review found edit-notification and cancelled-slot reuse issues; both were fixed before completion. Final verification passed with 36 tests.
+
+### 2026-06-23 - Cycle 5 - Targeted T09 Review
+
+- Scope: `docs/archive/CYCLE5_T09_REVIEW.md`, T09 admin booking/edit files.
+- Why: Admin booking edits touch booking integrity, admin authorization, and client notification integrity.
+- Decisions applied: `D-002`, `D-003`, `D-004`
+- Evidence collected: initial targeted review findings; notification/reuse fixes; repeat review with no remaining P0/P1 behavior findings; P2 test hardening; full verification.
+- Follow-ups: Proceed to T10 reminder scheduler.
+- Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 0.

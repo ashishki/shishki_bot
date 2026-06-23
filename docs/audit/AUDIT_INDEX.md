@@ -11,6 +11,7 @@ Append-only. One row per validation or review cycle.
 | CYCLE2 | Phase 2 | 2026-06-23 | Targeted T05 booking service and slot locking | No | 0 | 0 | 0 |
 | CYCLE3 | Phase 2 | 2026-06-23 | Targeted T06 notifications and templates | No | 0 | 0 | 0 |
 | CYCLE4 | Phase 2 | 2026-06-23 | Targeted T07 admin authorization and menus | No | 0 | 0 | 0 |
+| CYCLE5 | Phase 3 | 2026-06-23 | Targeted T09 admin booking edits | No | 0 | 0 | 0 |
 
 ## Archive
 
@@ -21,6 +22,7 @@ Append-only. One row per validation or review cycle.
 | CYCLE2 | `docs/archive/CYCLE2_T05_REVIEW.md` | Phase 2 | PASS |
 | CYCLE3 | `docs/archive/CYCLE3_T06_REVIEW.md` | Phase 2 | PASS |
 | CYCLE4 | `docs/archive/CYCLE4_T07_REVIEW.md` | Phase 2 | PASS |
+| CYCLE5 | `docs/archive/CYCLE5_T09_REVIEW.md` | Phase 3 | PASS |
 
 ## Notes
 
