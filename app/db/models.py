@@ -41,6 +41,7 @@ class BookingStatus(StrEnum):
 
 class DeliveryStatus(StrEnum):
     PENDING = "pending"
+    PROCESSING = "processing"
     SENT = "sent"
     FAILED = "failed"
     SKIPPED = "skipped"

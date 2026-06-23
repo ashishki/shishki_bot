@@ -5,10 +5,10 @@ bot for one stylist.
 
 ## Current Status
 
-- Phase 3 is active. T09 is complete: admin manual booking, reschedule,
-  cancellation, and detail-edit tests are in place.
-- Next task: T10 reminder scheduler.
-- Cycle 5 T09 booking/edit review findings were closed before T10.
+- Phase 4 is active. T10 is complete: restart-safe reminder scheduling,
+  recovery, and duplicate-send prevention tests are in place.
+- Next task: T11 completion, expenses, and revenue.
+- Cycle 6 T10 reminder review findings were closed before T11.
 - Production v1 remains deterministic: no production LLM behavior or external
   skills are planned.
 
@@ -47,6 +47,9 @@ security checks on push and pull request.
 - `app/db/models.py` - SQLAlchemy models for users, clients, slots, bookings,
   status history, notifications, reminders, and expenses.
 - `app/db/session.py` - async engine/session helpers.
+- `app/scheduler.py` - reminder recovery job DTO adapter.
+- `app/services/` - booking, notification, reminder, and upcoming finance/client
+  history services.
 - `tests/` - smoke, model, service, notification, and handler tests.
 
 ## Workflow

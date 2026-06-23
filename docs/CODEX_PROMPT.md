@@ -3,15 +3,15 @@
 Version: 1.1
 Date: 2026-06-23
 Mode: Standard
-Phase: 3
+Phase: 4
 
 ## Current State
 
-- Phase: 3
-- Baseline: T09 complete; admin booking/edit tests pass with 36 total tests.
+- Phase: 4
+- Baseline: T10 complete; reminder scheduler tests pass with 47 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (36 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (47 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,14 +29,14 @@ Phase: 3
 
 ## Next Task
 
-T10: Reminder Scheduler
+T11: Completion, Expenses, And Revenue
 
 Before editing, read:
 
-- `docs/tasks.md#t10-reminder-scheduler`
-- `docs/spec.md#feature-5---reminders-and-notifications`
+- `docs/tasks.md#t11-completion-expenses-and-revenue`
+- `docs/spec.md#feature-6---completion-revenue-and-expenses`
 - `docs/IMPLEMENTATION_CONTRACT.md`
-- `docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity`
+- `docs/IMPLEMENTATION_CONTRACT.md#financial-calculations`
 
 ## Verification
 
@@ -56,7 +56,7 @@ python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-
 
 ## Fix Queue
 
-empty - no P0/P1/P2 findings remain from the T09 targeted review.
+empty - no P0/P1/P2 findings remain from the T10 targeted review.
 
 ## Capability State
 
@@ -128,6 +128,9 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   complex bookings, reschedule/cancel/detail edit services, status history,
   admin allowlist wrappers, client notification logging, cancelled-slot reuse,
   and collision/error regression coverage.
+- 2026-06-23 - T10 Reminder Scheduler: added restart-safe reminder
+  reconstruction, scheduler DTOs, atomic reminder delivery claiming,
+  duplicate-send prevention, reschedule reconciliation, and recovery tests.
 
 ## Completed Bootstrap Work
 

@@ -6,12 +6,13 @@ Date: 2026-06-23
 
 ## Current State
 
-- Phase: 1
-- Baseline: Standard bootstrap complete; no application code yet.
+- Phase: 4
+- Baseline: T10 complete; reminder scheduler tests pass with 47 total tests.
 - Primary handoff: `docs/CODEX_PROMPT.md`
 - Current task graph: `docs/tasks.md`
 - Contract: `docs/IMPLEMENTATION_CONTRACT.md`
-- Verification command: `python3 tools/integrity_check.py --root .`
+- Verification command: full README verification: ruff check, ruff format --check,
+  pytest, integrity check, and skill security gate.
 - External skills: none approved.
 
 ## Instructions For Codex
@@ -28,4 +29,4 @@ Date: 2026-06-23
 
 ## Current Next Task
 
-T01: Project Skeleton
+T11: Completion, Expenses, And Revenue

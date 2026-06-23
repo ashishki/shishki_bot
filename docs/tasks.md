@@ -321,6 +321,8 @@ Owner:      codex
 Phase:      3
 Type:       none
 Depends-On: T04 T06
+Status:     [x] complete
+Completed:  2026-06-23
 
 Objective: |
   Add restart-safe reminder scheduling and duplicate-send prevention.

@@ -171,3 +171,21 @@ Status: append-only
 - Evidence collected: initial targeted review findings; notification/reuse fixes; repeat review with no remaining P0/P1 behavior findings; P2 test hardening; full verification.
 - Follow-ups: Proceed to T10 reminder scheduler.
 - Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 0.
+
+### 2026-06-23 - T10 - Reminder Scheduler
+
+- Scope: `app/scheduler.py`, `app/services/reminders.py`, `app/db/models.py`, `tests/test_reminders.py`, `docs/CODEX_PROMPT.md`, `docs/tasks.md`, `docs/EVIDENCE_INDEX.md`
+- Why: Add restart-safe reminder reconstruction and duplicate-send prevention before finance and client-history work begins.
+- Decisions applied: `D-002`, `D-004`
+- Evidence collected: reminder tests passed; full pytest passed with 47 tests; ruff check; ruff format --check; integrity check; skill security gate.
+- Follow-ups: T11 should implement completed booking finance using completed statuses and recorded expenses only.
+- Notes: Delivery uses a conditional `pending/failed` to `processing` claim before calling the external sender, then records sent/failed/skipped state.
+
+### 2026-06-23 - Cycle 6 - Targeted T10 Review
+
+- Scope: `docs/archive/CYCLE6_T10_REVIEW.md`, T10 reminder scheduler files.
+- Why: Reminder delivery semantics and restart-safe duplicate prevention touch a review escalation boundary.
+- Decisions applied: `D-002`, `D-004`
+- Evidence collected: initial targeted review findings; atomic claim/timezone/restart/race fixes; repeat review with no remaining P0/P1/P2 findings; full verification.
+- Follow-ups: Proceed to T11 completion, expenses, and revenue.
+- Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 0.
