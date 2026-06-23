@@ -208,6 +208,8 @@ enabling it.
 | `DEFAULT_PLACE` | Human-readable appointment place/address | `Studio address` | Yes |
 | `STYLIST_CONTACT_URL` | Public stylist contact link for consultation redirects | `https://t.me/stylist` | Yes |
 | `DEFAULT_MAP_URL` | Optional map link | `https://maps.example/...` | No |
+| `YANDEX_PLACE` / `YANDEX_MAP_URL` | Optional Yandex Maps address link | `https://yandex.example/...` | No |
+| `GOOGLE_PLACE` / `GOOGLE_MAP_URL` | Optional Google Maps address link | `https://google.example/...` | No |
 | `WEBHOOK_SECRET` | Secret for webhook mode | `change-me` | No |
 | `ENV` | Runtime environment | `local` | No |
 

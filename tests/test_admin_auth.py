@@ -10,6 +10,7 @@ from app.bot.handlers.admin import (
     is_admin_user,
     resolve_admin_action,
 )
+from app.bot.handlers.client import CLIENT_WELCOME_TEXT, handle_start_command
 from app.bot.keyboards import AdminMenuAction, admin_callback_data, admin_menu_actions
 from app.config import Settings
 
@@ -78,17 +79,28 @@ def test_admin_menu_actions() -> None:
     response = build_admin_menu_response(111, settings)
     assert tuple(button.action for button in response.buttons) == expected_actions
     assert tuple(button.label for button in response.buttons) == (
-        "Today",
-        "This week",
-        "Manual booking",
-        "Change booking",
-        "Cancel booking",
-        "Revenue",
-        "Clients",
+        "Сегодня",
+        "Ближайшие даты",
+        "Создать запись",
+        "Перенести запись",
+        "Отменить запись",
+        "Выручка",
+        "Клиенты",
     )
     assert tuple(button.callback_data for button in response.buttons) == tuple(
         admin_callback_data(action) for action in expected_actions
     )
+
+
+def test_admin_user_can_use_client_start_menu() -> None:
+    settings = _settings()
+
+    admin_response = handle_admin_menu_command(111, settings)
+    client_response = handle_start_command(settings)
+
+    assert admin_response.text == ADMIN_MENU_TEXT
+    assert client_response.text == CLIENT_WELCOME_TEXT
+    assert client_response.buttons
 
 
 def test_admin_router_can_be_built_without_registering_clients() -> None:

@@ -243,3 +243,12 @@ Status: append-only
 - Evidence collected: initial targeted review findings; schema initialization and backup URL docs fixes; repeat review with no remaining P0/P1/P2 findings; full verification.
 - Follow-ups: Keep deployment docs current before real client use.
 - Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 0.
+
+### 2026-06-23 - Local Telegram Testing Setup And UX Localization
+
+- Scope: `.gitignore`, `README.md`, `docs/ARCHITECTURE.md`, `docs/DEPLOYMENT.md`, `app/config.py`, `app/main.py`, `app/bot/*`, `app/services/booking.py`, `tests/*`
+- Why: Prepare the bot for live Telegram testing with the supplied local credentials, 2026-06-27 haircut slots, Russian client/admin UX, map links, client self-service booking management, and admin client/schedule controls.
+- Decisions applied: `D-001`, `D-002`, `D-003`, `D-004`
+- Evidence collected: ruff check; ruff format --check; full pytest passed with 62 tests; integrity check; skill security gate; local smoke-check for client start/date buttons and admin schedule; bot process started with PID recorded in `bot.pid`.
+- Follow-ups: Before real client use, configure durable hosting/process supervision and a backup path for the local database.
+- Notes: No payments, calendar sync, external AI behavior, or new admin users were added.

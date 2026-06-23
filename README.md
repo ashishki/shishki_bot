@@ -59,6 +59,8 @@ Runtime configuration is read only from environment variables:
 | `DEFAULT_PLACE` | yes | Default appointment address shown to clients. |
 | `STYLIST_CONTACT_URL` | yes | Public contact link for complex-service redirects. |
 | `DEFAULT_MAP_URL` | no | Optional map link in client-facing messages. |
+| `YANDEX_PLACE` / `YANDEX_MAP_URL` | no | Optional Yandex Maps link shown as `Yandex` in address lines. |
+| `GOOGLE_PLACE` / `GOOGLE_MAP_URL` | no | Optional Google Maps link shown as `Google` in address lines. |
 | `WEBHOOK_SECRET` | no | Reserved for webhook deployment mode. Current runtime uses polling. |
 | `ENV` | no | Environment label, defaults to `local`. |
 
@@ -71,6 +73,8 @@ export DATABASE_URL="sqlite+aiosqlite:///./shishki_bot.db"
 export TIMEZONE="Asia/Tbilisi"
 export DEFAULT_PLACE="Studio address"
 export STYLIST_CONTACT_URL="https://t.me/stylist"
+export YANDEX_PLACE="https://yandex.example/..."
+export GOOGLE_PLACE="https://google.example/..."
 ```
 
 Before the first local startup, create the database schema:

@@ -125,8 +125,11 @@ def test_admin_reschedule_notifies_client() -> None:
     assert saved_log.status is DeliveryStatus.SENT
     assert saved_log.kind == "booking_rescheduled"
     assert sender.messages[0][0] == 123
-    assert "Booking rescheduled" in sender.messages[0][1]
-    assert new_start.strftime("%Y-%m-%d") in sender.messages[0][1]
+    assert "Запись перенесена" in sender.messages[0][1]
+    assert (
+        new_start.astimezone(_settings().timezone_info).strftime("%H:%M")
+        in sender.messages[0][1]
+    )
 
 
 def test_admin_cancel_notifies_client() -> None:
@@ -185,7 +188,7 @@ def test_admin_cancel_notifies_client() -> None:
     assert saved_log.status is DeliveryStatus.SENT
     assert saved_log.kind == "booking_cancelled"
     assert sender.messages[0][0] == 123
-    assert "Booking cancelled" in sender.messages[0][1]
+    assert "Запись отменена" in sender.messages[0][1]
     assert "stylist unavailable" in sender.messages[0][1]
     assert second_booking.status is BookingStatus.CONFIRMED
     assert second_booking.slot_id == slot.id

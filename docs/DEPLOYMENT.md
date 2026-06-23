@@ -28,6 +28,8 @@ toolchain mutation are part of v1.
 | `DEFAULT_PLACE` | yes | `Studio address` |
 | `STYLIST_CONTACT_URL` | yes | `https://t.me/stylist` |
 | `DEFAULT_MAP_URL` | no | `https://maps.example/...` |
+| `YANDEX_PLACE` / `YANDEX_MAP_URL` | no | `https://yandex.example/...` |
+| `GOOGLE_PLACE` / `GOOGLE_MAP_URL` | no | `https://google.example/...` |
 | `WEBHOOK_SECRET` | no | reserved for future webhook mode |
 | `ENV` | no | `production` |
 
@@ -57,6 +59,8 @@ export DATABASE_URL="sqlite+aiosqlite:///./shishki_bot.db"
 export TIMEZONE="Asia/Tbilisi"
 export DEFAULT_PLACE="Studio address"
 export STYLIST_CONTACT_URL="https://t.me/stylist"
+export YANDEX_PLACE="https://yandex.example/..."
+export GOOGLE_PLACE="https://google.example/..."
 python - <<'PY'
 import asyncio
 

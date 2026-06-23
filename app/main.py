@@ -25,6 +25,7 @@ async def run(settings: Settings | None = None) -> None:
 
     try:
         from aiogram import Bot, Dispatcher
+        from aiogram.client.default import DefaultBotProperties
     except ImportError as exc:  # pragma: no cover - exercised only without deps
         raise RuntimeError(
             "aiogram is required to start the bot; install requirements.txt"
@@ -33,9 +34,17 @@ async def run(settings: Settings | None = None) -> None:
     engine = create_database_engine(active_settings.database_url)
     session_factory = create_session_factory(engine)
 
-    bot = Bot(token=active_settings.bot_token)
+    bot = Bot(
+        token=active_settings.bot_token,
+        default=DefaultBotProperties(parse_mode="HTML"),
+    )
     dispatcher = Dispatcher()
-    dispatcher.include_router(build_admin_router(active_settings))
+    dispatcher.include_router(
+        build_admin_router(
+            active_settings,
+            async_session_factory=session_factory,
+        )
+    )
     dispatcher.include_router(
         build_client_router(
             active_settings,

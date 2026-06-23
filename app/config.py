@@ -21,6 +21,8 @@ class Settings:
     default_place: str
     stylist_contact_url: str
     default_map_url: str | None = None
+    yandex_map_url: str | None = None
+    google_map_url: str | None = None
     webhook_secret: str | None = None
     env: str = "local"
 
@@ -48,6 +50,8 @@ def load_settings(source: Mapping[str, str] | None = None) -> Settings:
         default_place=default_place,
         stylist_contact_url=stylist_contact_url,
         default_map_url=_optional(values, "DEFAULT_MAP_URL"),
+        yandex_map_url=_first_optional(values, "YANDEX_MAP_URL", "YANDEX_PLACE"),
+        google_map_url=_first_optional(values, "GOOGLE_MAP_URL", "GOOGLE_PLACE"),
         webhook_secret=_optional(values, "WEBHOOK_SECRET"),
         env=_optional(values, "ENV") or "local",
     )
@@ -66,6 +70,14 @@ def _optional(values: Mapping[str, str], key: str) -> str | None:
         return None
     value = value.strip()
     return value or None
+
+
+def _first_optional(values: Mapping[str, str], *keys: str) -> str | None:
+    for key in keys:
+        value = _optional(values, key)
+        if value is not None:
+            return value
+    return None
 
 
 def _parse_admin_ids(raw_value: str) -> tuple[int, ...]:

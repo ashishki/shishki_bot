@@ -10,6 +10,7 @@ CLIENT_CALLBACK_PREFIX = "client"
 
 
 class AdminMenuAction(StrEnum):
+    MENU = "menu"
     TODAY = "today"
     THIS_WEEK = "this_week"
     MANUAL_BOOKING = "manual_booking"
@@ -17,6 +18,14 @@ class AdminMenuAction(StrEnum):
     CANCEL_BOOKING = "cancel_booking"
     REVENUE = "revenue"
     CLIENTS = "clients"
+    CLIENT_CARD = "client_card"
+    CONTACT_CLIENT = "contact_client"
+    SCHEDULE_DATE = "schedule_date"
+    BOOKING_DETAIL = "booking_detail"
+    RESCHEDULE_DATE = "reschedule_date"
+    RESCHEDULE_SLOT = "reschedule_slot"
+    CONFIRM_RESCHEDULE = "confirm_reschedule"
+    CONFIRM_CANCEL = "confirm_cancel"
 
 
 class ClientMenuAction(StrEnum):
@@ -25,8 +34,15 @@ class ClientMenuAction(StrEnum):
     MY_BOOKING = "my_booking"
     RESCHEDULE_CANCEL = "reschedule_cancel"
     CONTACT = "contact"
+    SELECT_HAIRCUT_DATE = "select_haircut_date"
     SELECT_HAIRCUT_SLOT = "select_haircut_slot"
     CONFIRM_HAIRCUT = "confirm_haircut"
+    CHANGE_BOOKING = "change_booking"
+    SELECT_RESCHEDULE_DATE = "select_reschedule_date"
+    SELECT_RESCHEDULE_SLOT = "select_reschedule_slot"
+    CONFIRM_RESCHEDULE = "confirm_reschedule"
+    CANCEL_BOOKING = "cancel_booking"
+    CONFIRM_CANCEL = "confirm_cancel"
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,21 +59,21 @@ class MenuButton:
 
 
 _ADMIN_MENU_LAYOUT: tuple[tuple[AdminMenuAction, str], ...] = (
-    (AdminMenuAction.TODAY, "Today"),
-    (AdminMenuAction.THIS_WEEK, "This week"),
-    (AdminMenuAction.MANUAL_BOOKING, "Manual booking"),
-    (AdminMenuAction.CHANGE_BOOKING, "Change booking"),
-    (AdminMenuAction.CANCEL_BOOKING, "Cancel booking"),
-    (AdminMenuAction.REVENUE, "Revenue"),
-    (AdminMenuAction.CLIENTS, "Clients"),
+    (AdminMenuAction.TODAY, "Сегодня"),
+    (AdminMenuAction.THIS_WEEK, "Ближайшие даты"),
+    (AdminMenuAction.MANUAL_BOOKING, "Создать запись"),
+    (AdminMenuAction.CHANGE_BOOKING, "Перенести запись"),
+    (AdminMenuAction.CANCEL_BOOKING, "Отменить запись"),
+    (AdminMenuAction.REVENUE, "Выручка"),
+    (AdminMenuAction.CLIENTS, "Клиенты"),
 )
 
 _CLIENT_MENU_LAYOUT: tuple[tuple[ClientMenuAction, str], ...] = (
-    (ClientMenuAction.BOOK_HAIRCUT, "Book haircut"),
-    (ClientMenuAction.COMPLEX_SERVICE, "Coloring or complex service"),
-    (ClientMenuAction.MY_BOOKING, "My booking"),
-    (ClientMenuAction.RESCHEDULE_CANCEL, "Reschedule or cancel"),
-    (ClientMenuAction.CONTACT, "Contact stylist"),
+    (ClientMenuAction.BOOK_HAIRCUT, "Записаться"),
+    (ClientMenuAction.COMPLEX_SERVICE, "Окрашивание / сложная услуга"),
+    (ClientMenuAction.MY_BOOKING, "Моя запись"),
+    (ClientMenuAction.RESCHEDULE_CANCEL, "Перенести / отменить"),
+    (ClientMenuAction.CONTACT, "Связаться"),
 )
 
 
@@ -65,7 +81,9 @@ def admin_menu_actions() -> tuple[AdminMenuAction, ...]:
     return tuple(action for action, _label in _ADMIN_MENU_LAYOUT)
 
 
-def admin_callback_data(action: AdminMenuAction) -> str:
+def admin_callback_data(action: AdminMenuAction, value: str | int | None = None) -> str:
+    if value is not None:
+        return f"{ADMIN_CALLBACK_PREFIX}:{action.value}:{value}"
     return f"{ADMIN_CALLBACK_PREFIX}:{action.value}"
 
 

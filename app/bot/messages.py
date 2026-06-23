@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from html import escape
 from zoneinfo import ZoneInfo
 
 from app.db.models import Booking
@@ -15,17 +16,27 @@ def booking_confirmation_message(
     booking: Booking,
     *,
     timezone: ZoneInfo = DEFAULT_MESSAGE_TIMEZONE,
+    yandex_map_url: str | None = None,
+    google_map_url: str | None = None,
+    default_map_url: str | None = None,
 ) -> str:
     return "\n".join(
         [
-            "Booking confirmed",
-            f"Service: {booking.service}",
-            f"Date: {_format_date(booking.starts_at, timezone)}",
-            f"Time: {_format_time(booking.starts_at, timezone)}",
-            f"Place: {booking.place}",
-            f"Duration: {booking.duration_minutes} minutes",
-            f"Price: {_format_money(booking.price_amount)} GEL",
-            "To change or cancel, contact the stylist from the bot menu.",
+            "Запись подтверждена",
+            "",
+            _html(_service_label(booking.service)),
+            _format_date(booking.starts_at, timezone),
+            _format_time(booking.starts_at, timezone),
+            format_location_line(
+                booking.place,
+                yandex_map_url=yandex_map_url,
+                google_map_url=google_map_url,
+                default_map_url=default_map_url,
+            ),
+            f"{booking.duration_minutes} мин",
+            f"{_format_money(booking.price_amount)} GEL",
+            "",
+            "Запись можно перенести или отменить в разделе «Моя запись».",
         ]
     )
 
@@ -34,16 +45,25 @@ def booking_rescheduled_message(
     booking: Booking,
     *,
     timezone: ZoneInfo = DEFAULT_MESSAGE_TIMEZONE,
+    yandex_map_url: str | None = None,
+    google_map_url: str | None = None,
+    default_map_url: str | None = None,
 ) -> str:
     return "\n".join(
         [
-            "Booking rescheduled",
-            f"Service: {booking.service}",
-            f"New date: {_format_date(booking.starts_at, timezone)}",
-            f"New time: {_format_time(booking.starts_at, timezone)}",
-            f"Place: {booking.place}",
-            f"Duration: {booking.duration_minutes} minutes",
-            f"Price: {_format_money(booking.price_amount)} GEL",
+            "Запись перенесена",
+            "",
+            _html(_service_label(booking.service)),
+            _format_date(booking.starts_at, timezone),
+            _format_time(booking.starts_at, timezone),
+            format_location_line(
+                booking.place,
+                yandex_map_url=yandex_map_url,
+                google_map_url=google_map_url,
+                default_map_url=default_map_url,
+            ),
+            f"{booking.duration_minutes} мин",
+            f"{_format_money(booking.price_amount)} GEL",
         ]
     )
 
@@ -53,16 +73,25 @@ def booking_cancelled_message(
     *,
     reason: str | None = None,
     timezone: ZoneInfo = DEFAULT_MESSAGE_TIMEZONE,
+    yandex_map_url: str | None = None,
+    google_map_url: str | None = None,
+    default_map_url: str | None = None,
 ) -> str:
     lines = [
-        "Booking cancelled",
-        f"Service: {booking.service}",
-        f"Date: {_format_date(booking.starts_at, timezone)}",
-        f"Time: {_format_time(booking.starts_at, timezone)}",
-        f"Place: {booking.place}",
+        "Запись отменена",
+        "",
+        _html(_service_label(booking.service)),
+        _format_date(booking.starts_at, timezone),
+        _format_time(booking.starts_at, timezone),
+        format_location_line(
+            booking.place,
+            yandex_map_url=yandex_map_url,
+            google_map_url=google_map_url,
+            default_map_url=default_map_url,
+        ),
     ]
     if reason:
-        lines.append(f"Reason: {reason}")
+        lines.append(f"Причина: {_html(reason)}")
     return "\n".join(lines)
 
 
@@ -70,16 +99,25 @@ def booking_updated_message(
     booking: Booking,
     *,
     timezone: ZoneInfo = DEFAULT_MESSAGE_TIMEZONE,
+    yandex_map_url: str | None = None,
+    google_map_url: str | None = None,
+    default_map_url: str | None = None,
 ) -> str:
     return "\n".join(
         [
-            "Booking updated",
-            f"Service: {booking.service}",
-            f"Date: {_format_date(booking.starts_at, timezone)}",
-            f"Time: {_format_time(booking.starts_at, timezone)}",
-            f"Place: {booking.place}",
-            f"Duration: {booking.duration_minutes} minutes",
-            f"Price: {_format_money(booking.price_amount)} GEL",
+            "Запись обновлена",
+            "",
+            _html(_service_label(booking.service)),
+            _format_date(booking.starts_at, timezone),
+            _format_time(booking.starts_at, timezone),
+            format_location_line(
+                booking.place,
+                yandex_map_url=yandex_map_url,
+                google_map_url=google_map_url,
+                default_map_url=default_map_url,
+            ),
+            f"{booking.duration_minutes} мин",
+            f"{_format_money(booking.price_amount)} GEL",
         ]
     )
 
@@ -88,21 +126,54 @@ def admin_new_booking_message(
     booking: Booking,
     *,
     timezone: ZoneInfo = DEFAULT_MESSAGE_TIMEZONE,
+    yandex_map_url: str | None = None,
+    google_map_url: str | None = None,
+    default_map_url: str | None = None,
 ) -> str:
     return "\n".join(
         [
-            "New booking",
-            f"Service: {booking.service}",
-            f"Date: {_format_date(booking.starts_at, timezone)}",
-            f"Time: {_format_time(booking.starts_at, timezone)}",
-            f"Place: {booking.place}",
-            f"Price: {_format_money(booking.price_amount)} GEL",
+            "Новая запись",
+            f"Услуга: {_html(_service_label(booking.service))}",
+            f"Дата: {_format_date(booking.starts_at, timezone)}",
+            f"Время: {_format_time(booking.starts_at, timezone)}",
+            format_location_line(
+                booking.place,
+                yandex_map_url=yandex_map_url,
+                google_map_url=google_map_url,
+                default_map_url=default_map_url,
+            ),
+            f"Цена: {_format_money(booking.price_amount)} GEL",
         ]
     )
 
 
+def format_location_line(
+    place: str,
+    *,
+    yandex_map_url: str | None = None,
+    google_map_url: str | None = None,
+    default_map_url: str | None = None,
+) -> str:
+    links: list[str] = []
+    if yandex_map_url:
+        links.append(_html_link("Yandex", yandex_map_url))
+    if google_map_url:
+        links.append(_html_link("Google", google_map_url))
+    if not links and default_map_url:
+        links.append(_html_link("Map", default_map_url))
+
+    line = f"Адрес: {_html(place)}"
+    if links:
+        line = f"{line} | {' | '.join(links)}"
+    return line
+
+
 def _format_date(value: datetime, timezone: ZoneInfo) -> str:
-    return _as_timezone(value, timezone).strftime("%Y-%m-%d")
+    local_value = _as_timezone(value, timezone)
+    return (
+        f"{local_value.day} {_MONTHS_RU[local_value.month]}, "
+        f"{_WEEKDAYS_RU[local_value.weekday()]}"
+    )
 
 
 def _format_time(value: datetime, timezone: ZoneInfo) -> str:
@@ -117,3 +188,41 @@ def _as_timezone(value: datetime, timezone: ZoneInfo) -> datetime:
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone)
     return value.astimezone(timezone)
+
+
+def _html(value: object) -> str:
+    return escape(str(value), quote=False)
+
+
+def _html_link(label: str, url: str) -> str:
+    return f'<a href="{escape(url, quote=True)}">{_html(label)}</a>'
+
+
+def _service_label(value: str) -> str:
+    return "Стрижка" if value == "haircut" else value
+
+
+_MONTHS_RU = {
+    1: "января",
+    2: "февраля",
+    3: "марта",
+    4: "апреля",
+    5: "мая",
+    6: "июня",
+    7: "июля",
+    8: "августа",
+    9: "сентября",
+    10: "октября",
+    11: "ноября",
+    12: "декабря",
+}
+
+_WEEKDAYS_RU = (
+    "понедельник",
+    "вторник",
+    "среда",
+    "четверг",
+    "пятница",
+    "суббота",
+    "воскресенье",
+)

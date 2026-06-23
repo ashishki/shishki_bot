@@ -170,6 +170,39 @@ def reschedule_booking(
     new_slot_id: int,
     reason: str | None = None,
 ) -> Booking:
+    return _reschedule_booking(
+        session,
+        booking_id=booking_id,
+        new_slot_id=new_slot_id,
+        actor="admin",
+        reason=reason or "admin rescheduled booking",
+    )
+
+
+def reschedule_booking_by_client(
+    session: Session,
+    *,
+    booking_id: int,
+    new_slot_id: int,
+    reason: str | None = None,
+) -> Booking:
+    return _reschedule_booking(
+        session,
+        booking_id=booking_id,
+        new_slot_id=new_slot_id,
+        actor="client",
+        reason=reason or "client rescheduled booking",
+    )
+
+
+def _reschedule_booking(
+    session: Session,
+    *,
+    booking_id: int,
+    new_slot_id: int,
+    actor: str,
+    reason: str,
+) -> Booking:
     booking = _get_booking(session, booking_id)
     new_slot = _lock_available_slot(session, new_slot_id)
     old_status = booking.status
@@ -184,10 +217,10 @@ def reschedule_booking(
             booking.status = BookingStatus.RESCHEDULED
             booking.status_history.append(
                 BookingStatusHistory(
-                    actor="admin",
+                    actor=actor,
                     old_status=old_status,
                     new_status=BookingStatus.RESCHEDULED,
-                    reason=reason or "admin rescheduled booking",
+                    reason=reason,
                 )
             )
             session.flush()
@@ -214,6 +247,30 @@ def cancel_booking_by_admin(
                 old_status=old_status,
                 new_status=BookingStatus.CANCELLED_BY_ADMIN,
                 reason=reason or "admin cancelled booking",
+            )
+        )
+        session.flush()
+
+    return booking
+
+
+def cancel_booking_by_client(
+    session: Session,
+    *,
+    booking_id: int,
+    reason: str | None = None,
+) -> Booking:
+    booking = _get_booking(session, booking_id)
+    old_status = booking.status
+
+    with session.begin_nested():
+        booking.status = BookingStatus.CANCELLED_BY_CLIENT
+        booking.status_history.append(
+            BookingStatusHistory(
+                actor="client",
+                old_status=old_status,
+                new_status=BookingStatus.CANCELLED_BY_CLIENT,
+                reason=reason or "client cancelled booking",
             )
         )
         session.flush()

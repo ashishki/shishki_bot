@@ -5,6 +5,11 @@
 *.pem
 *.key
 *.crt
+*.db
+*.sqlite
+*.sqlite3
+*.log
+*.pid
 
 # Python
 __pycache__/

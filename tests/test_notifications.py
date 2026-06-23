@@ -40,13 +40,13 @@ def test_confirmation_message_contains_required_fields() -> None:
 
     message = booking_confirmation_message(booking)
 
-    assert "haircut" in message
-    assert "2026-06-24" in message
+    assert "Стрижка" in message
+    assert "24 июня, среда" in message
     assert "10:00" in message
     assert "Test studio" in message
-    assert "60 minutes" in message
+    assert "60 мин" in message
     assert "90 GEL" in message
-    assert "change or cancel" in message
+    assert "перенести или отменить" in message
 
 
 def test_messages_use_business_timezone() -> None:
@@ -57,8 +57,22 @@ def test_messages_use_business_timezone() -> None:
         timezone=ZoneInfo("Asia/Tbilisi"),
     )
 
-    assert "2026-06-24" in message
+    assert "24 июня, среда" in message
     assert "10:00" in message
+
+
+def test_confirmation_message_contains_yandex_and_google_location_links() -> None:
+    booking = _booking()
+
+    message = booking_confirmation_message(
+        booking,
+        yandex_map_url="https://yandex.example/test?a=1&b=2",
+        google_map_url="https://google.example/test",
+    )
+
+    assert "Адрес: Test studio" in message
+    assert '<a href="https://yandex.example/test?a=1&amp;b=2">Yandex</a>' in message
+    assert '<a href="https://google.example/test">Google</a>' in message
 
 
 def test_change_notifications_contain_required_fields() -> None:
@@ -68,13 +82,13 @@ def test_change_notifications_contain_required_fields() -> None:
     cancelled = booking_cancelled_message(booking, reason="client request")
 
     for message in (rescheduled, cancelled):
-        assert "haircut" in message
-        assert "2026-06-24" in message
+        assert "Стрижка" in message
+        assert "24 июня, среда" in message
         assert "10:00" in message
         assert "Test studio" in message
 
-    assert "rescheduled" in rescheduled.lower()
-    assert "cancelled" in cancelled.lower()
+    assert "Запись перенесена" in rescheduled
+    assert "Запись отменена" in cancelled
     assert "client request" in cancelled
 
 
@@ -83,9 +97,9 @@ def test_admin_new_booking_message_contains_required_fields() -> None:
 
     message = admin_new_booking_message(booking, timezone=ZoneInfo("Asia/Tbilisi"))
 
-    assert "New booking" in message
-    assert "haircut" in message
-    assert "2026-06-24" in message
+    assert "Новая запись" in message
+    assert "Стрижка" in message
+    assert "24 июня, среда" in message
     assert "10:00" in message
     assert "Test studio" in message
     assert "90 GEL" in message

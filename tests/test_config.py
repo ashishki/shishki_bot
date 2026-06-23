@@ -13,6 +13,8 @@ def test_settings_load_from_environment(monkeypatch) -> None:
             "TIMEZONE": "Asia/Tbilisi",
             "DEFAULT_PLACE": "Test studio",
             "DEFAULT_MAP_URL": "https://maps.example/test",
+            "YANDEX_PLACE": "https://yandex.example/test",
+            "GOOGLE_PLACE": "https://google.example/test",
             "STYLIST_CONTACT_URL": "https://t.me/test_stylist",
             "WEBHOOK_SECRET": "test-secret",
             "ENV": "test",
@@ -27,6 +29,8 @@ def test_settings_load_from_environment(monkeypatch) -> None:
         default_place="Test studio",
         stylist_contact_url="https://t.me/test_stylist",
         default_map_url="https://maps.example/test",
+        yandex_map_url="https://yandex.example/test",
+        google_map_url="https://google.example/test",
         webhook_secret="test-secret",
         env="test",
     )
