@@ -225,3 +225,21 @@ Status: append-only
 - Evidence collected: targeted review reported no P0/P1/P2 findings; full verification.
 - Follow-ups: Proceed to T13 deployment and operator guide.
 - Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 0.
+
+### 2026-06-23 - T13 - Deployment And Operator Guide
+
+- Scope: `README.md`, `docs/ADMIN_GUIDE.md`, `docs/DEPLOYMENT.md`, `docs/CODEX_PROMPT.md`, `docs/tasks.md`, `docs/EVIDENCE_INDEX.md`
+- Why: Close the v1 task graph with local setup, runtime configuration, bot startup, admin operation, deployment, backup, rollback, and safe-testing documentation.
+- Decisions applied: `D-001`, `D-002`, `D-003`, `D-004`
+- Evidence collected: integrity check; deployment-notes acceptance check; full pytest passed with 56 tests; ruff check; ruff format --check; skill security gate.
+- Follow-ups: No implementation tasks remain in the current graph. Future production migration or external integration work needs an explicit task, backup note, and rollback note.
+- Notes: Fresh database schema initialization is documented with the existing `create_all` helper; backup/restore docs use a libpq-compatible `DATABASE_BACKUP_URL`.
+
+### 2026-06-23 - Cycle 9 - Targeted T13 Review
+
+- Scope: `docs/archive/CYCLE9_T13_REVIEW.md`, T13 deployment/operator documentation.
+- Why: Deployment, secrets, backup, and rollback docs are a contract escalation boundary.
+- Decisions applied: `D-001`, `D-002`, `D-003`, `D-004`
+- Evidence collected: initial targeted review findings; schema initialization and backup URL docs fixes; repeat review with no remaining P0/P1/P2 findings; full verification.
+- Follow-ups: Keep deployment docs current before real client use.
+- Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 0.

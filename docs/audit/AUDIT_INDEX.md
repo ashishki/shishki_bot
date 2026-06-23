@@ -15,6 +15,7 @@ Append-only. One row per validation or review cycle.
 | CYCLE6 | Phase 3 | 2026-06-23 | Targeted T10 reminder scheduler | No | 0 | 0 | 0 |
 | CYCLE7 | Phase 4 | 2026-06-23 | Targeted T11 finance calculations | No | 0 | 0 | 0 |
 | CYCLE8 | Phase 4 | 2026-06-23 | Targeted T12 client history | No | 0 | 0 | 0 |
+| CYCLE9 | Phase 5 | 2026-06-23 | Targeted T13 deployment and operator guide | No | 0 | 0 | 0 |
 
 ## Archive
 
@@ -29,6 +30,7 @@ Append-only. One row per validation or review cycle.
 | CYCLE6 | `docs/archive/CYCLE6_T10_REVIEW.md` | Phase 3 | PASS |
 | CYCLE7 | `docs/archive/CYCLE7_T11_REVIEW.md` | Phase 4 | PASS |
 | CYCLE8 | `docs/archive/CYCLE8_T12_REVIEW.md` | Phase 4 | PASS |
+| CYCLE9 | `docs/archive/CYCLE9_T13_REVIEW.md` | Phase 5 | PASS |
 
 ## Notes
 

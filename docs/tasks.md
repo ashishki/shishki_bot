@@ -413,6 +413,8 @@ Owner:      codex
 Phase:      5
 Type:       none
 Depends-On: T02 T10 T11 T12
+Status:     [x] complete
+Completed:  2026-06-23
 
 Objective: |
   Add deployment artifacts and operator docs for local setup, environment

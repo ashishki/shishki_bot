@@ -7,7 +7,7 @@ Date: 2026-06-23
 ## Current State
 
 - Phase: 5
-- Baseline: T12 complete; client history tests pass with 56 total tests.
+- Baseline: T13 complete; task graph complete with 56 total tests.
 - Primary handoff: `docs/CODEX_PROMPT.md`
 - Current task graph: `docs/tasks.md`
 - Contract: `docs/IMPLEMENTATION_CONTRACT.md`
@@ -29,4 +29,4 @@ Date: 2026-06-23
 
 ## Current Next Task
 
-T13: Deployment And Operator Guide
+None: implementation task graph complete through T13.

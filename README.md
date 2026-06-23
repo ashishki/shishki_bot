@@ -5,10 +5,11 @@ bot for one stylist.
 
 ## Current Status
 
-- Phase 5 is active. T12 is complete: client card, visit history, and
-  completed-booking total-spent tests are in place.
-- Next task: T13 deployment and operator guide.
-- Cycle 8 T12 client-history review findings were closed before T13.
+- Phase 5 is complete. T13 is complete: deployment and operator docs are in
+  place, including setup, environment variables, schema initialization, bot
+  startup, backup, rollback, and no-real-client-test rules.
+- Next task: none in the current task graph.
+- Cycle 9 T13 deployment/operator review findings were closed.
 - Production v1 remains deterministic: no production LLM behavior or external
   skills are planned.
 
@@ -37,6 +38,78 @@ python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-
 
 The CI workflow runs the same lint, format, test, integrity, and external skill
 security checks on push and pull request.
+
+## Local Setup
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements-dev.txt -e .
+```
+
+Runtime configuration is read only from environment variables:
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `BOT_TOKEN` | yes | Telegram bot token. Do not commit it. |
+| `ADMIN_TELEGRAM_IDS` | yes | Comma-separated Telegram numeric user IDs allowed to use admin actions. |
+| `DATABASE_URL` | yes | Local prototype can use `sqlite+aiosqlite:///./shishki_bot.db`; production should use PostgreSQL. |
+| `TIMEZONE` | yes | Business timezone, for example `Asia/Tbilisi`. |
+| `DEFAULT_PLACE` | yes | Default appointment address shown to clients. |
+| `STYLIST_CONTACT_URL` | yes | Public contact link for complex-service redirects. |
+| `DEFAULT_MAP_URL` | no | Optional map link in client-facing messages. |
+| `WEBHOOK_SECRET` | no | Reserved for webhook deployment mode. Current runtime uses polling. |
+| `ENV` | no | Environment label, defaults to `local`. |
+
+Example local environment:
+
+```bash
+export BOT_TOKEN="123456:test-token"
+export ADMIN_TELEGRAM_IDS="111111111"
+export DATABASE_URL="sqlite+aiosqlite:///./shishki_bot.db"
+export TIMEZONE="Asia/Tbilisi"
+export DEFAULT_PLACE="Studio address"
+export STYLIST_CONTACT_URL="https://t.me/stylist"
+```
+
+Before the first local startup, create the database schema:
+
+```bash
+python - <<'PY'
+import asyncio
+
+from app.db.session import create_all, create_database_engine
+
+
+async def main() -> None:
+    engine = create_database_engine()
+    try:
+        await create_all(engine)
+    finally:
+        await engine.dispose()
+
+
+asyncio.run(main())
+PY
+```
+
+## Bot Startup
+
+After installing dependencies and exporting environment variables:
+
+```bash
+shishki-bot
+```
+
+Equivalent module command:
+
+```bash
+python -m app.main
+```
+
+The current runtime starts aiogram polling. Deployment and operator notes live in
+`docs/DEPLOYMENT.md` and `docs/ADMIN_GUIDE.md`.
 
 ## Repository Layout
 

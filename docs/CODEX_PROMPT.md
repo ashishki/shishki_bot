@@ -3,12 +3,12 @@
 Version: 1.1
 Date: 2026-06-23
 Mode: Standard
-Phase: 4
+Phase: 5
 
 ## Current State
 
-- Phase: 4
-- Baseline: T12 complete; client history tests pass with 56 total tests.
+- Phase: 5
+- Baseline: T13 complete; task graph complete with 56 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
 - Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (56 passed), integrity check, and skill security gate passed.
@@ -29,15 +29,17 @@ Phase: 4
 
 ## Next Task
 
-T13: Deployment And Operator Guide
+none - implementation task graph complete through T13.
 
-Before editing, read:
+For future changes, read:
 
-- `docs/tasks.md#t13-deployment-and-operator-guide`
-- `docs/ARCHITECTURE.md#runtime-model`
-- `docs/spec.md#feature-8---operations-and-reliability`
+- `docs/tasks.md`
+- `docs/ARCHITECTURE.md`
+- `docs/spec.md`
 - `docs/IMPLEMENTATION_CONTRACT.md`
-- `docs/IMPLEMENTATION_CONTRACT.md#runtime-and-secrets`
+- `README.md`
+- `docs/ADMIN_GUIDE.md`
+- `docs/DEPLOYMENT.md`
 
 ## Verification
 
@@ -57,7 +59,7 @@ python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-
 
 ## Fix Queue
 
-empty - no P0/P1/P2 findings remain from the T12 targeted review.
+empty - no P0/P1/P2 findings remain from the T13 targeted review.
 
 ## Capability State
 
@@ -138,6 +140,9 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
 - 2026-06-23 - T12 Client History: added client card summaries, completed
   visit history, total-spent/service/last-visit calculations, admin client-card
   wrapper, and client-history regression tests.
+- 2026-06-23 - T13 Deployment And Operator Guide: documented local setup,
+  environment variables, schema initialization, bot startup, admin operations,
+  safe testing, backup, restore, rollback, and deployment notes.
 
 ## Completed Bootstrap Work
 
