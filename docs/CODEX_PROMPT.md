@@ -8,10 +8,10 @@ Phase: 2
 ## Current State
 
 - Phase: 2
-- Baseline: Phase 1 complete through T04; Cycle 1 review complete with no P0/P1 findings and 2 open P2 findings. T05 is the next implementation task.
+- Baseline: T05 complete; booking creation and slot-locking tests pass with 14 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (5 passed), integrity check, and skill security gate passed. Cycle 1 audit reran `python3 tools/integrity_check.py --root .` successfully; direct pytest rerun was unavailable from `/usr/bin/python3` because pytest is not installed there.
+- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (14 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,13 +29,14 @@ Phase: 2
 
 ## Next Task
 
-T05: Booking Service And Slot Locking
+T06: Message Templates And Notification Service
 
 Before editing, read:
 
-- `docs/tasks.md#t05-booking-service-and-slot-locking`
+- `docs/tasks.md#t06-message-templates-and-notification-service`
 - `docs/IMPLEMENTATION_CONTRACT.md`
-- `docs/spec.md#feature-2---simple-haircut-booking`
+- `docs/spec.md#feature-5---reminders-and-notifications`
+- `docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity`
 
 ## Verification
 
@@ -95,10 +96,7 @@ empty - no P0/P1 blockers from Cycle 1; proceed to the phase queue.
 
 ## Open Findings
 
-| ID | Sev | Description | Status | Next |
-|----|-----|-------------|--------|------|
-| CODE-1 | P2 | `Booking.slot_id` is nullable even though booking creation/reschedule must target and lock a slot. | Open | Make `slot_id` non-null and add an integrity regression test when hardening T05/T04 persistence. |
-| CODE-2 | P2 | Async session helpers lack tests for engine creation, session factory, create/drop helpers, and `session_scope` commit/rollback. | Open | Add async persistence tests using `sqlite+aiosqlite:///:memory:` before relying on these helpers in booking service work. |
+none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
 
 ## Completed Tasks
 
@@ -113,6 +111,9 @@ empty - no P0/P1 blockers from Cycle 1; proceed to the phase queue.
 - 2026-06-23 - T04 Database Models And Migrations: added SQLAlchemy models for
   users, clients, slots, bookings, status history, notification logs, reminder
   logs, and booking expenses, plus metadata create/drop tests.
+- 2026-06-23 - T05 Booking Service And Slot Locking: added deterministic
+  haircut booking creation, slot availability checks, double-booking
+  prevention, non-null booking slot invariant, and async session helper tests.
 
 ## Completed Bootstrap Work
 

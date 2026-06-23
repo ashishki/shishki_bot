@@ -149,6 +149,8 @@ Owner:      codex
 Phase:      2
 Type:       none
 Depends-On: T04
+Status:     [x] complete
+Completed:  2026-06-23
 
 Objective: |
   Implement deterministic booking creation, slot availability checks, and
@@ -172,12 +174,17 @@ Files:
 Context-Refs:
   - docs/spec.md#feature-2---simple-haircut-booking
 
+Transaction-Contract: |
+  Booking service functions participate in a caller-owned SQLAlchemy Session
+  transaction. They lock the slot, create the booking, and flush. Callers must
+  commit or roll back the session boundary.
+
 ## T06: Message Templates And Notification Service
 
 Owner:      codex
 Phase:      2
 Type:       none
-Depends-On: T04
+Depends-On: T04 T05
 
 Objective: |
   Add reusable client/admin message templates and a notification service that

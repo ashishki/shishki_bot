@@ -15,6 +15,8 @@ This index points to durable proof. It is not proof by itself.
 | T03 smoke baseline | tests | `tests/test_config.py`, `tests/test_imports.py` | Test settings ignore real environment values when supplied a source; importing `app.main` does not import `aiogram`. | 2026-06-23 | Yes |
 | T04 database model baseline | tests | `tests/test_models.py`, `app/db/models.py`, `app/db/session.py` | SQLAlchemy metadata creates/drops all tables; minimal booking graph includes users, clients, slots, status history, notification logs, reminder logs, and booking expenses; booking statuses match architecture. | 2026-06-23 | Yes |
 | Phase 1 review archive | audit | `docs/archive/PHASE1_REVIEW.md`, `docs/audit/PHASE_REPORT_LATEST.md` | Deep review for Phase 1 T01-T04. Stop-Ship: No. P0: 0, P1: 0, P2: 2. | 2026-06-23 | Yes |
+| T05 booking service | tests | `tests/test_booking_service.py`, `tests/test_models.py`, `app/services/booking.py` | Confirmed haircut booking defaults to 90 GEL and 60 minutes; double booking is rejected; coloring self-booking is rejected; past/blocked/booked slots are filtered or rejected; booking slot is non-null; async session helpers commit/rollback. | 2026-06-23 | Yes |
+| Cycle 2 T05 targeted review | audit | `docs/archive/CYCLE2_T05_REVIEW.md` | Deep review for T05 booking transaction and slot locking. Stop-Ship: No. P0: 0, P1: 0, P2: 0. | 2026-06-23 | Yes |
 
 ## Retrieval Rules
 

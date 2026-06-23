@@ -8,6 +8,7 @@ Append-only. One row per validation or review cycle.
 |-------|-------|------|-------|-----------|----|----|----|
 | PHASE1 | Phase 1 | 2026-06-23 | Standard bootstrap artifacts before T01 | No | 0 | 0 | 0 |
 | CYCLE1 | Phase 1 | 2026-06-23 | Phase 1 implementation T01-T04 | No | 0 | 0 | 2 |
+| CYCLE2 | Phase 2 | 2026-06-23 | Targeted T05 booking service and slot locking | No | 0 | 0 | 0 |
 
 ## Archive
 
@@ -15,6 +16,7 @@ Append-only. One row per validation or review cycle.
 |-------|------|-------|--------|
 | PHASE1 | `docs/audit/PHASE1_AUDIT.md` | Phase 1 | PASS |
 | CYCLE1 | `docs/archive/PHASE1_REVIEW.md` | Phase 1 | PASS - P2 follow-ups |
+| CYCLE2 | `docs/archive/CYCLE2_T05_REVIEW.md` | Phase 2 | PASS |
 
 ## Notes
 

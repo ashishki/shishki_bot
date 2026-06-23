@@ -2,9 +2,12 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
 from sqlalchemy import create_engine, inspect, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.db import session as db_session
 from app.db.models import (
     Base,
     Booking,
@@ -130,3 +133,61 @@ def test_metadata_create_all() -> None:
     Base.metadata.drop_all(engine)
     inspector = inspect(engine)
     assert inspector.get_table_names() == []
+
+
+def test_booking_requires_slot() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    starts_at = datetime(2026, 6, 24, 10, 0, tzinfo=UTC)
+
+    with Session(engine) as session:
+        client = Client(user=User(telegram_id=777), display_name="No Slot")
+        booking = Booking(
+            client=client,
+            service="haircut",
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(hours=1),
+            duration_minutes=60,
+            place="Test studio",
+            price_amount=Decimal("90.00"),
+            status=BookingStatus.CONFIRMED,
+        )
+        session.add(booking)
+
+        with pytest.raises(IntegrityError):
+            session.flush()
+
+
+@pytest.mark.asyncio
+async def test_async_session_helpers_commit_and_rollback() -> None:
+    engine = db_session.create_database_engine("sqlite+aiosqlite:///:memory:")
+    await db_session.create_all(engine)
+    session_factory = db_session.create_session_factory(engine)
+
+    async with db_session.session_scope(session_factory) as session:
+        session.add(User(telegram_id=321, display_name="Committed User"))
+
+    async with session_factory() as session:
+        committed_user = await session.scalar(
+            select(User).where(User.telegram_id == 321)
+        )
+    assert committed_user is not None
+
+    with pytest.raises(RuntimeError):
+        async with db_session.session_scope(session_factory) as session:
+            session.add(User(telegram_id=654, display_name="Rolled Back User"))
+            raise RuntimeError("force rollback")
+
+    async with session_factory() as session:
+        rolled_back_user = await session.scalar(
+            select(User).where(User.telegram_id == 654)
+        )
+    assert rolled_back_user is None
+
+    await db_session.drop_all(engine)
+    async with engine.begin() as connection:
+        table_names = await connection.run_sync(
+            lambda sync_connection: inspect(sync_connection).get_table_names()
+        )
+    assert table_names == []
+    await engine.dispose()

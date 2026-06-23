@@ -90,3 +90,21 @@ Status: append-only
 - Evidence collected: Cycle 1 review report; phase archive; integrity check.
 - Follow-ups: T05 should address or account for P2 findings CODE-1 and CODE-2 while implementing slot locking.
 - Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 2.
+
+### 2026-06-23 - T05 - Booking Service And Slot Locking
+
+- Scope: `app/services/booking.py`, `tests/test_booking_service.py`, `app/db/models.py`, `tests/test_models.py`, `docs/CODEX_PROMPT.md`, `docs/tasks.md`, `docs/EVIDENCE_INDEX.md`
+- Why: Implement deterministic simple haircut booking and prevent double-booking.
+- Decisions applied: `D-002`, `D-004`
+- Evidence collected: booking service tests passed; model/session hardening tests passed; full pytest passed; ruff check; ruff format --check; integrity check; skill security gate.
+- Follow-ups: T06 must add notification templates and delivery logging.
+- Notes: Cycle 1 P2 findings CODE-1 and CODE-2 were addressed by making `Booking.slot_id` non-null and adding async session helper tests.
+
+### 2026-06-23 - Cycle 2 - Targeted T05 Review
+
+- Scope: `docs/audit/META_ANALYSIS.md`, `docs/audit/ARCH_REPORT.md`, `docs/audit/REVIEW_REPORT.md`, `docs/archive/CYCLE2_T05_REVIEW.md`, T05 booking service files.
+- Why: Booking transaction/slot locking touches a deep-review escalation boundary.
+- Decisions applied: `D-002`, `D-004`
+- Evidence collected: Cycle 2 targeted review report; ruff check; ruff format --check; full pytest; integrity check; skill security gate.
+- Follow-ups: Proceed to T06 message templates and notification service.
+- Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 0.

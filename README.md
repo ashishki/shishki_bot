@@ -5,11 +5,10 @@ bot for one stylist.
 
 ## Current Status
 
-- Phase 1 is complete through T04: project skeleton, CI/local verification,
-  smoke tests, and database models/session primitives.
-- Phase 2 is ready to start with T05: booking service and slot locking.
-- Cycle 1 review found no P0/P1 blockers. Two P2 database hardening findings
-  are tracked in `docs/CODEX_PROMPT.md`.
+- Phase 2 is active. T05 is complete: booking service and slot locking are in
+  place with regression tests.
+- Next task: T06 message templates and notification service.
+- Cycle 1 P2 database hardening findings were addressed during T05.
 - Production v1 remains deterministic: no production LLM behavior or external
   skills are planned.
 

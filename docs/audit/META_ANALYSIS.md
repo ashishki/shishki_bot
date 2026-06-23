@@ -1,38 +1,33 @@
-# META_ANALYSIS - Cycle 1
-_Date: 2026-06-23 · Type: full_
+# META_ANALYSIS - Cycle 2
+_Date: 2026-06-23 · Type: targeted_
 
 ## Project State
-Phase 1 (T01-T04) complete. Next: T05 - Booking Service And Slot Locking.
-Baseline: documented 5 pass, 0 skip, 0 fail; no previous cycle exists for comparison.
-
-Current local audit check: `python3 tools/integrity_check.py --root .` passed. Direct pytest rerun was not possible in this shell because `pytest` is not installed for `/usr/bin/python3`; the documented handoff baseline remains 5 passing tests.
+Phase 2 has T05 - Booking Service And Slot Locking complete but uncommitted. Next: T06 - Message Templates And Notification Service.
+Baseline: 11 pass, 0 skip, 0 fail. Changed vs Cycle 1: documented pytest baseline increased from 5 to 11 passing tests after T05; local Cycle 2 verification also passed ruff check, ruff format --check, pytest, integrity check, and skill security gate.
 
 ## Open Findings
 | ID | Sev | Description | Files | Status |
 |----|-----|-------------|-------|--------|
-| none | n/a | No open findings are listed in `docs/CODEX_PROMPT.md`; no previous `docs/audit/REVIEW_REPORT.md` is present. | n/a | n/a |
+| CODE-1 | P2 | `Booking.slot_id` was nullable even though booking creation/reschedule must target and lock a slot. | `app/db/models.py`, `tests/test_models.py` | Claimed addressed in T05; verify closure in PROMPT_2 because this targeted review was triggered by booking locking changes. |
+| CODE-2 | P2 | Async database/session helpers lacked tests for engine creation, session factory, create/drop helpers, and `session_scope` commit/rollback behavior. | `app/db/session.py`, `tests/test_models.py` | Claimed addressed in T05; verify closure in PROMPT_2 with emphasis on transaction rollback behavior. |
 
 ## PROMPT_1 Scope (architecture)
-- Project skeleton: package metadata, runtime/dev dependencies, application layout, and side-effect-free entrypoint boundaries.
-- Configuration: environment-backed settings, required secret/runtime variables, admin allowlist parsing, timezone validation, and no hardcoded secrets.
-- Verification surface: GitHub Actions and local verification commands for ruff, pytest, integrity check, and skill security gate.
-- Persistence model: SQLAlchemy tables for users, clients, slots, bookings, booking status history, notification logs, reminder logs, and booking expenses.
-- Transaction boundary readiness for T05: slot uniqueness, booking-to-slot relationship, status constraints, and session helper shape before implementing double-booking prevention.
+- Booking service transaction boundary: deterministic simple booking creation, slot availability checks, `SELECT ... FOR UPDATE` expectations, and database uniqueness fallback.
+- Slot locking and double-booking prevention: one-booking-per-slot invariant, blocked/past slot handling, and behavior under concurrent sessions.
+- Persistence invariants changed by T05: non-null `Booking.slot_id`, booking-to-slot relationship typing, and status history created on client self-booking.
+- T06 handoff boundary: notification service will depend on confirmed booking details created by T05, but should not silently mutate booking state without logged notification attempts.
 
 ## PROMPT_2 Scope (code, priority order)
-1. `app/db/models.py` (new)
-2. `app/db/session.py` (new)
-3. `app/config.py` (new/security-critical)
-4. `app/main.py` (new/regression check)
-5. `tests/test_models.py` (new)
-6. `tests/test_config.py` (changed)
-7. `tests/test_imports.py` (changed)
-8. `pyproject.toml` (changed verification/dependency contract)
-9. `.github/workflows/ci.yml` (new verification contract)
-10. `requirements.txt` and `requirements-dev.txt` (new dependency contract)
+1. `app/services/booking.py` (new/security-critical booking transaction and slot locking logic)
+2. `tests/test_booking_service.py` (new acceptance and regression coverage for T05)
+3. `app/db/models.py` (changed booking slot invariant)
+4. `tests/test_models.py` (changed regression coverage for non-null slot and async sessions)
+5. `app/db/session.py` (regression check for helper behavior covered by new tests)
+6. `app/services/__init__.py` (new package boundary)
+7. `docs/tasks.md`, `docs/CODEX_PROMPT.md`, `docs/IMPLEMENTATION_JOURNAL.md`, `docs/EVIDENCE_INDEX.md` (changed handoff/evidence consistency)
 
 ## Cycle Type
-Full - Phase 1 has just completed T01-T04, and the next task T05 begins Phase 2 booking behavior. This is a phase-boundary review rather than a targeted hotfix or documentation-only pass.
+Targeted - this is not a phase boundary. The review is risk-triggered because T05 touched booking transaction/locking behavior, a deep-review escalation surface under `docs/IMPLEMENTATION_CONTRACT.md`.
 
 ## Notes for PROMPT_3
-Consolidation should focus on whether Phase 1 gives T05 a reliable booking foundation: deterministic status values, one-booking-per-slot constraints, enough transaction/session primitives for slot locking, and tests that can catch double-booking regressions. Also reconcile the documented 5-test baseline with the local environment gap where `pytest` is not installed outside the documented setup flow.
+Consolidation should focus on whether T05 genuinely closes CODE-1 and CODE-2, whether the slot-locking design is sufficient for the selected database/runtime assumptions, and whether any P0/P1 booking-integrity issue must block T06. Keep notification concerns limited to T06 handoff risks unless T05 state changes already require notification semantics.
