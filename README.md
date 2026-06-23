@@ -5,10 +5,10 @@ bot for one stylist.
 
 ## Current Status
 
-- Phase 4 is active. T11 is complete: booking completion, expenses, and weekly
-  gross/net revenue tests are in place.
-- Next task: T12 client history.
-- Cycle 7 T11 finance review findings were closed before T12.
+- Phase 5 is active. T12 is complete: client card, visit history, and
+  completed-booking total-spent tests are in place.
+- Next task: T13 deployment and operator guide.
+- Cycle 8 T12 client-history review findings were closed before T13.
 - Production v1 remains deterministic: no production LLM behavior or external
   skills are planned.
 
@@ -48,8 +48,8 @@ security checks on push and pull request.
   status history, notifications, reminders, and expenses.
 - `app/db/session.py` - async engine/session helpers.
 - `app/scheduler.py` - reminder recovery job DTO adapter.
-- `app/services/` - booking, notification, reminder, finance, and upcoming
-  client history services.
+- `app/services/` - booking, notification, reminder, finance, and client history
+  services.
 - `tests/` - smoke, model, service, notification, and handler tests.
 
 ## Workflow

@@ -6,8 +6,8 @@ Date: 2026-06-23
 
 ## Current State
 
-- Phase: 4
-- Baseline: T11 complete; finance tests pass with 52 total tests.
+- Phase: 5
+- Baseline: T12 complete; client history tests pass with 56 total tests.
 - Primary handoff: `docs/CODEX_PROMPT.md`
 - Current task graph: `docs/tasks.md`
 - Contract: `docs/IMPLEMENTATION_CONTRACT.md`
@@ -29,4 +29,4 @@ Date: 2026-06-23
 
 ## Current Next Task
 
-T12: Client History
+T13: Deployment And Operator Guide

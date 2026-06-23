@@ -8,10 +8,10 @@ Phase: 4
 ## Current State
 
 - Phase: 4
-- Baseline: T11 complete; finance tests pass with 52 total tests.
+- Baseline: T12 complete; client history tests pass with 56 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (52 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (56 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,14 +29,15 @@ Phase: 4
 
 ## Next Task
 
-T12: Client History
+T13: Deployment And Operator Guide
 
 Before editing, read:
 
-- `docs/tasks.md#t12-client-history`
-- `docs/spec.md#feature-7---client-history`
+- `docs/tasks.md#t13-deployment-and-operator-guide`
+- `docs/ARCHITECTURE.md#runtime-model`
+- `docs/spec.md#feature-8---operations-and-reliability`
 - `docs/IMPLEMENTATION_CONTRACT.md`
-- `docs/IMPLEMENTATION_CONTRACT.md#financial-calculations`
+- `docs/IMPLEMENTATION_CONTRACT.md#runtime-and-secrets`
 
 ## Verification
 
@@ -56,7 +57,7 @@ python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-
 
 ## Fix Queue
 
-empty - no P0/P1/P2 findings remain from the T11 targeted review.
+empty - no P0/P1/P2 findings remain from the T12 targeted review.
 
 ## Capability State
 
@@ -134,6 +135,9 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
 - 2026-06-23 - T11 Completion, Expenses, And Revenue: added booking
   completion, final amount and expense recording, weekly gross/net summaries,
   admin finance wrappers, and financial-calculation regression tests.
+- 2026-06-23 - T12 Client History: added client card summaries, completed
+  visit history, total-spent/service/last-visit calculations, admin client-card
+  wrapper, and client-history regression tests.
 
 ## Completed Bootstrap Work
 

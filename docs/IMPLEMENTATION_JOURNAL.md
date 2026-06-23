@@ -207,3 +207,21 @@ Status: append-only
 - Evidence collected: targeted review reported no P0/P1/P2 findings; full verification.
 - Follow-ups: Proceed to T12 client history.
 - Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 0.
+
+### 2026-06-23 - T12 - Client History
+
+- Scope: `app/services/clients.py`, `app/bot/handlers/admin.py`, `tests/test_client_history.py`, `docs/CODEX_PROMPT.md`, `docs/tasks.md`, `docs/EVIDENCE_INDEX.md`
+- Why: Add admin client-card and visit-history summaries using completed booking final amounts only.
+- Decisions applied: `D-002`, `D-004`
+- Evidence collected: client-history tests passed; full pytest passed with 56 tests; ruff check; ruff format --check; integrity check; skill security gate.
+- Follow-ups: T13 should document deployment, operator use, backups, rollback, and safe testing rules.
+- Notes: Client total spent excludes cancelled, no-show, confirmed, missing-final-amount, and other-client bookings.
+
+### 2026-06-23 - Cycle 8 - Targeted T12 Review
+
+- Scope: `docs/archive/CYCLE8_T12_REVIEW.md`, T12 client-history files.
+- Why: Client total spent is covered by the financial calculations contract.
+- Decisions applied: `D-002`, `D-004`
+- Evidence collected: targeted review reported no P0/P1/P2 findings; full verification.
+- Follow-ups: Proceed to T13 deployment and operator guide.
+- Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 0.

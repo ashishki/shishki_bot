@@ -29,6 +29,7 @@ from app.services.booking import (
     reschedule_booking,
     update_booking_details_by_admin,
 )
+from app.services.clients import ClientCard, client_card_summary
 from app.services.finance import (
     ExpenseInput,
     WeeklyRevenueSummary,
@@ -67,6 +68,11 @@ class AdminBookingMutationResponse:
 @dataclass(frozen=True, slots=True)
 class AdminRevenueResponse:
     summary: WeeklyRevenueSummary
+
+
+@dataclass(frozen=True, slots=True)
+class AdminClientCardResponse:
+    client_card: ClientCard
 
 
 def is_admin_user(telegram_user_id: int | None, settings: Settings) -> bool:
@@ -278,6 +284,19 @@ def handle_admin_weekly_revenue(
     require_admin_user(telegram_user_id, settings)
     return AdminRevenueResponse(
         summary=weekly_revenue_summary(session, week_start=week_start)
+    )
+
+
+def handle_admin_client_card(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    client_id: int,
+) -> AdminClientCardResponse:
+    require_admin_user(telegram_user_id, settings)
+    return AdminClientCardResponse(
+        client_card=client_card_summary(session, client_id=client_id)
     )
 
 

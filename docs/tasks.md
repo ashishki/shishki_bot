@@ -385,6 +385,8 @@ Owner:      codex
 Phase:      4
 Type:       none
 Depends-On: T04 T11
+Status:     [x] complete
+Completed:  2026-06-23
 
 Objective: |
   Implement client card and visit history summaries for admin use.
