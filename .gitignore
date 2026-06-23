@@ -1,0 +1,27 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# JavaScript / TypeScript
+node_modules/
+dist/
+build/
+coverage/
+
+# Local tooling
+.DS_Store
+.idea/
+.vscode/
