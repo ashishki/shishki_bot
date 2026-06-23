@@ -13,6 +13,7 @@ This index points to durable proof. It is not proof by itself.
 | T01 project skeleton | tests | `tests/test_config.py`, `tests/test_imports.py` | Settings load from supplied environment; app import has no Telegram side effects. Commands run: ruff check, ruff format --check, pytest tests -q, integrity check, skill security gate. | 2026-06-23 | Yes |
 | T02 local and CI verification | workflow/docs | `.github/workflows/ci.yml`, `README.md`, `docs/CODEX_PROMPT.md` | CI and local commands run ruff check, ruff format --check, pytest, integrity check, and external skill security gate. | 2026-06-23 | Yes |
 | T03 smoke baseline | tests | `tests/test_config.py`, `tests/test_imports.py` | Test settings ignore real environment values when supplied a source; importing `app.main` does not import `aiogram`. | 2026-06-23 | Yes |
+| T04 database model baseline | tests | `tests/test_models.py`, `app/db/models.py`, `app/db/session.py` | SQLAlchemy metadata creates/drops all tables; minimal booking graph includes users, clients, slots, status history, notification logs, reminder logs, and booking expenses; booking statuses match architecture. | 2026-06-23 | Yes |
 
 ## Retrieval Rules
 

@@ -72,3 +72,12 @@ Status: append-only
 - Evidence collected: ruff check; ruff format --check; pytest; integrity check; skill security gate.
 - Follow-ups: T04 can add database models and persistence tests on top of the smoke baseline.
 - Notes: Import smoke test fails if `app.main` imports `aiogram` during module import.
+
+### 2026-06-23 - T04 - Database Models And Migrations
+
+- Scope: `app/db/models.py`, `app/db/session.py`, `tests/test_models.py`, `docs/CODEX_PROMPT.md`, `docs/tasks.md`, `docs/EVIDENCE_INDEX.md`
+- Why: Add the durable data model baseline for bookings, slots, notifications, reminders, expenses, and status history.
+- Decisions applied: `D-002`, `D-004`
+- Evidence collected: `tests/test_models.py` passed; full pytest passed; ruff check; ruff format --check; integrity check; skill security gate.
+- Follow-ups: T05 should build booking creation and slot locking on these models.
+- Notes: `app/db/__init__.py` was added as package glue for the new database module.

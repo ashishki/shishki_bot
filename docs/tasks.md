@@ -115,6 +115,8 @@ Owner:      codex
 Phase:      1
 Type:       none
 Depends-On: T03
+Status:     [x] complete
+Completed:  2026-06-23
 
 Objective: |
   Add database models and persistence primitives for users, clients, slots,
