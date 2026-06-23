@@ -8,9 +8,9 @@ Phase: 1
 ## Current State
 
 - Phase: 1
-- Baseline: T01 complete; project skeleton exists with 2 smoke tests passing.
+- Baseline: T02 complete; local and CI verification are documented and active with 2 smoke tests passing.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
-- CI: scaffold can install dev dependencies after T01; T02 owns the full CI/README verification update.
+- CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
 - Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (2 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
@@ -29,28 +29,29 @@ Phase: 1
 
 ## Next Task
 
-T02: CI And Local Verification
+T03: First Smoke Tests
 
 Before editing, read:
 
-- `docs/tasks.md#t02-ci-and-local-verification`
+- `docs/tasks.md#t03-first-smoke-tests`
 - `docs/IMPLEMENTATION_CONTRACT.md`
-- `docs/ARCHITECTURE.md#tech-stack`
+- `docs/spec.md#feature-8---operations-and-reliability`
 
 ## Verification
 
 Current local verification:
 
 ```bash
-/tmp/shishki_bot_venv/bin/python -m ruff check app tests
-/tmp/shishki_bot_venv/bin/python -m ruff format --check app tests
-/tmp/shishki_bot_venv/bin/python -m pytest tests -q
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements-dev.txt -e .
+python -m ruff check app tests
+python -m ruff format --check app tests
+python -m pytest tests -q
 python3 tools/integrity_check.py --root .
 python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-scanner
 ```
-
-T02 must update CI and README with the full local verification command using the
-project's documented environment setup.
 
 ## Fix Queue
 
@@ -101,6 +102,8 @@ none
 - 2026-06-23 - T01 Project Skeleton: added package metadata, runtime/dev
   requirements, `app/config.py`, side-effect-free `app/main.py`, and smoke
   tests for settings and imports.
+- 2026-06-23 - T02 CI And Local Verification: activated GitHub Actions
+  verification and documented the full local command in README and this handoff.
 
 ## Completed Bootstrap Work
 

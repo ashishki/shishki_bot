@@ -15,11 +15,19 @@ lightweight operations bot for one stylist.
 ## Current Verification
 
 ```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements-dev.txt -e .
+python -m ruff check app tests
+python -m ruff format --check app tests
+python -m pytest tests -q
 python3 tools/integrity_check.py --root .
 python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-scanner
 ```
 
-T01/T02 will add the Python package, tests, ruff, and full app CI.
+The CI workflow runs the same lint, format, test, integrity, and external skill
+security checks on push and pull request.
 
 ## Workflow
 

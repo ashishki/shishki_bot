@@ -51,6 +51,8 @@ Owner:      codex
 Phase:      1
 Type:       none
 Depends-On: T01
+Status:     [x] complete
+Completed:  2026-06-23
 
 Objective: |
   Configure local and GitHub Actions verification for lint, format, tests, and

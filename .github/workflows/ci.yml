@@ -7,8 +7,8 @@ on:
     branches: ["main", "master"]
 
 jobs:
-  playbook-checks:
-    name: Playbook Checks
+  verification:
+    name: Verification
     runs-on: ubuntu-latest
 
     steps:
@@ -19,20 +19,16 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install app dependencies
-        if: hashFiles('requirements-dev.txt') != ''
+      - name: Install dependencies
         run: pip install -r requirements-dev.txt -e .
 
       - name: Lint app
-        if: hashFiles('requirements-dev.txt') != ''
         run: ruff check app tests
 
       - name: Format check
-        if: hashFiles('requirements-dev.txt') != ''
         run: ruff format --check app tests
 
       - name: Run tests
-        if: hashFiles('requirements-dev.txt') != ''
         env:
           BOT_TOKEN: test-token
           ADMIN_TELEGRAM_IDS: "1"
@@ -50,6 +46,3 @@ jobs:
             --root . \
             --discover-agent-skills \
             --require-scanner
-
-  # T02 will replace or extend this job after T01 creates pyproject.toml,
-  # requirements-dev.txt, app/, and tests/.

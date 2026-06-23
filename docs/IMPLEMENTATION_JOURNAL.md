@@ -54,3 +54,12 @@ Status: append-only
 - Evidence collected: ruff check; ruff format --check; pytest smoke tests; `python3 tools/integrity_check.py --root .`; `python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-scanner`
 - Follow-ups: T02 must finalize CI and README local verification instructions.
 - Notes: Verification used a temporary virtualenv at `/tmp/shishki_bot_venv`.
+
+### 2026-06-23 - T02 - CI And Local Verification
+
+- Scope: `.github/workflows/ci.yml`, `README.md`, `docs/CODEX_PROMPT.md`, `docs/tasks.md`, `docs/EVIDENCE_INDEX.md`
+- Why: Make the Python verification workflow active and document the exact local command.
+- Decisions applied: `D-001`, `D-002`, `D-003`
+- Evidence collected: ruff check; ruff format --check; pytest; `python3 tools/integrity_check.py --root .`; `python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-scanner`
+- Follow-ups: T03 should keep the smoke-test baseline explicit and import-safe.
+- Notes: GitHub Actions now installs `requirements-dev.txt` and runs the same verification gates.
