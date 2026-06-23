@@ -8,10 +8,10 @@ Phase: 4
 ## Current State
 
 - Phase: 4
-- Baseline: T10 complete; reminder scheduler tests pass with 47 total tests.
+- Baseline: T11 complete; finance tests pass with 52 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (47 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (52 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,12 +29,12 @@ Phase: 4
 
 ## Next Task
 
-T11: Completion, Expenses, And Revenue
+T12: Client History
 
 Before editing, read:
 
-- `docs/tasks.md#t11-completion-expenses-and-revenue`
-- `docs/spec.md#feature-6---completion-revenue-and-expenses`
+- `docs/tasks.md#t12-client-history`
+- `docs/spec.md#feature-7---client-history`
 - `docs/IMPLEMENTATION_CONTRACT.md`
 - `docs/IMPLEMENTATION_CONTRACT.md#financial-calculations`
 
@@ -56,7 +56,7 @@ python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-
 
 ## Fix Queue
 
-empty - no P0/P1/P2 findings remain from the T10 targeted review.
+empty - no P0/P1/P2 findings remain from the T11 targeted review.
 
 ## Capability State
 
@@ -131,6 +131,9 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
 - 2026-06-23 - T10 Reminder Scheduler: added restart-safe reminder
   reconstruction, scheduler DTOs, atomic reminder delivery claiming,
   duplicate-send prevention, reschedule reconciliation, and recovery tests.
+- 2026-06-23 - T11 Completion, Expenses, And Revenue: added booking
+  completion, final amount and expense recording, weekly gross/net summaries,
+  admin finance wrappers, and financial-calculation regression tests.
 
 ## Completed Bootstrap Work
 

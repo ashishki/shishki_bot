@@ -189,3 +189,21 @@ Status: append-only
 - Evidence collected: initial targeted review findings; atomic claim/timezone/restart/race fixes; repeat review with no remaining P0/P1/P2 findings; full verification.
 - Follow-ups: Proceed to T11 completion, expenses, and revenue.
 - Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 0.
+
+### 2026-06-23 - T11 - Completion, Expenses, And Revenue
+
+- Scope: `app/services/finance.py`, `app/bot/handlers/admin.py`, `tests/test_finance.py`, `docs/CODEX_PROMPT.md`, `docs/tasks.md`, `docs/EVIDENCE_INDEX.md`
+- Why: Add deterministic booking completion and weekly gross/net revenue calculations from completed bookings and recorded expenses.
+- Decisions applied: `D-002`, `D-004`
+- Evidence collected: finance tests passed; full pytest passed with 52 tests; ruff check; ruff format --check; integrity check; skill security gate.
+- Follow-ups: T12 should calculate client history from completed booking final amounts only.
+- Notes: Weekly gross/net excludes cancelled, no-show, draft, confirmed, and out-of-week bookings.
+
+### 2026-06-23 - Cycle 7 - Targeted T11 Review
+
+- Scope: `docs/archive/CYCLE7_T11_REVIEW.md`, T11 finance files.
+- Why: Financial calculations are a contract escalation boundary.
+- Decisions applied: `D-002`, `D-004`
+- Evidence collected: targeted review reported no P0/P1/P2 findings; full verification.
+- Follow-ups: Proceed to T12 client history.
+- Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 0.

@@ -7,7 +7,7 @@ Date: 2026-06-23
 ## Current State
 
 - Phase: 4
-- Baseline: T10 complete; reminder scheduler tests pass with 47 total tests.
+- Baseline: T11 complete; finance tests pass with 52 total tests.
 - Primary handoff: `docs/CODEX_PROMPT.md`
 - Current task graph: `docs/tasks.md`
 - Contract: `docs/IMPLEMENTATION_CONTRACT.md`
@@ -29,4 +29,4 @@ Date: 2026-06-23
 
 ## Current Next Task
 
-T11: Completion, Expenses, And Revenue
+T12: Client History

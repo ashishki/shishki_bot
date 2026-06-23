@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -27,6 +28,12 @@ from app.services.booking import (
     create_manual_booking,
     reschedule_booking,
     update_booking_details_by_admin,
+)
+from app.services.finance import (
+    ExpenseInput,
+    WeeklyRevenueSummary,
+    complete_booking,
+    weekly_revenue_summary,
 )
 from app.services.notifications import NotificationSender, send_client_notification
 
@@ -55,6 +62,11 @@ class AdminActionResponse:
 class AdminBookingMutationResponse:
     booking: Booking
     notification_log: NotificationLog | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AdminRevenueResponse:
+    summary: WeeklyRevenueSummary
 
 
 def is_admin_user(telegram_user_id: int | None, settings: Settings) -> bool:
@@ -232,6 +244,40 @@ def handle_admin_update_booking_details(
     return AdminBookingMutationResponse(
         booking=booking,
         notification_log=notification_log,
+    )
+
+
+def handle_admin_complete_booking(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    booking_id: int,
+    final_amount: Decimal,
+    expenses: tuple[ExpenseInput, ...] = (),
+    reason: str | None = None,
+) -> AdminBookingMutationResponse:
+    require_admin_user(telegram_user_id, settings)
+    booking = complete_booking(
+        session,
+        booking_id=booking_id,
+        final_amount=final_amount,
+        expenses=expenses,
+        reason=reason,
+    )
+    return AdminBookingMutationResponse(booking=booking)
+
+
+def handle_admin_weekly_revenue(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    week_start: datetime,
+) -> AdminRevenueResponse:
+    require_admin_user(telegram_user_id, settings)
+    return AdminRevenueResponse(
+        summary=weekly_revenue_summary(session, week_start=week_start)
     )
 
 

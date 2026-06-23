@@ -352,6 +352,8 @@ Owner:      codex
 Phase:      4
 Type:       none
 Depends-On: T04 T09
+Status:     [x] complete
+Completed:  2026-06-23
 
 Objective: |
   Implement booking completion, final amount entry, expense entry, weekly revenue
