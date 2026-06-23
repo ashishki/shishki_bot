@@ -21,6 +21,7 @@ This index points to durable proof. It is not proof by itself.
 | Cycle 3 T06 targeted review | audit | `docs/archive/CYCLE3_T06_REVIEW.md` | Deep review for T06 notification delivery semantics. Stop-Ship: No. P0: 0, P1: 0, P2: 0. | 2026-06-23 | Yes |
 | T07 admin authorization | tests | `tests/test_admin_auth.py`, `app/bot/handlers/admin.py`, `app/bot/keyboards.py`, `app/main.py` | Admin menu command and admin callback handling require allowlisted Telegram IDs; forged `admin:*` callbacks from non-admin users are denied; malformed callback payloads are rejected; admin menu exposes today, this week, manual booking, change booking, cancel booking, revenue, and clients actions. | 2026-06-23 | Yes |
 | Cycle 4 T07 targeted review | audit | `docs/archive/CYCLE4_T07_REVIEW.md` | Deep review for T07 admin authorization boundary. Initial P1/P2 findings were fixed and repeat review reported no remaining P0/P1/P2 findings. Stop-Ship: No. P0: 0, P1: 0, P2: 0. | 2026-06-23 | Yes |
+| T08 client booking handlers | tests | `tests/test_client_handlers.py`, `app/bot/handlers/client.py`, `app/bot/keyboards.py`, `app/main.py` | Start and unknown input return the client menu; haircut callback flow lists slots, requires explicit confirmation before booking, and commits only on confirm; complex-service callback creates no booking and includes stylist contact link; stale slot callbacks are recoverable; active booking lookup ignores past bookings; runtime async session dispatch is covered. | 2026-06-23 | Yes |
 
 ## Retrieval Rules
 

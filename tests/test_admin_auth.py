@@ -104,5 +104,6 @@ def _settings() -> Settings:
         database_url="sqlite+aiosqlite:///:memory:",
         timezone="Asia/Tbilisi",
         default_place="Test studio",
+        stylist_contact_url="https://t.me/test_stylist",
         env="test",
     )

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 ADMIN_CALLBACK_PREFIX = "admin"
+CLIENT_CALLBACK_PREFIX = "client"
 
 
 class AdminMenuAction(StrEnum):
@@ -18,9 +19,25 @@ class AdminMenuAction(StrEnum):
     CLIENTS = "clients"
 
 
+class ClientMenuAction(StrEnum):
+    BOOK_HAIRCUT = "book_haircut"
+    COMPLEX_SERVICE = "complex_service"
+    MY_BOOKING = "my_booking"
+    RESCHEDULE_CANCEL = "reschedule_cancel"
+    CONTACT = "contact"
+    SELECT_HAIRCUT_SLOT = "select_haircut_slot"
+    CONFIRM_HAIRCUT = "confirm_haircut"
+
+
+@dataclass(frozen=True, slots=True)
+class ClientCallbackData:
+    action: ClientMenuAction
+    value: str | None = None
+
+
 @dataclass(frozen=True, slots=True)
 class MenuButton:
-    action: AdminMenuAction
+    action: AdminMenuAction | ClientMenuAction
     label: str
     callback_data: str
 
@@ -33,6 +50,14 @@ _ADMIN_MENU_LAYOUT: tuple[tuple[AdminMenuAction, str], ...] = (
     (AdminMenuAction.CANCEL_BOOKING, "Cancel booking"),
     (AdminMenuAction.REVENUE, "Revenue"),
     (AdminMenuAction.CLIENTS, "Clients"),
+)
+
+_CLIENT_MENU_LAYOUT: tuple[tuple[ClientMenuAction, str], ...] = (
+    (ClientMenuAction.BOOK_HAIRCUT, "Book haircut"),
+    (ClientMenuAction.COMPLEX_SERVICE, "Coloring or complex service"),
+    (ClientMenuAction.MY_BOOKING, "My booking"),
+    (ClientMenuAction.RESCHEDULE_CANCEL, "Reschedule or cancel"),
+    (ClientMenuAction.CONTACT, "Contact stylist"),
 )
 
 
@@ -66,4 +91,46 @@ def admin_menu_buttons() -> tuple[MenuButton, ...]:
             callback_data=admin_callback_data(action),
         )
         for action, label in _ADMIN_MENU_LAYOUT
+    )
+
+
+def client_menu_actions() -> tuple[ClientMenuAction, ...]:
+    return tuple(action for action, _label in _CLIENT_MENU_LAYOUT)
+
+
+def client_callback_data(
+    action: ClientMenuAction,
+    value: str | int | None = None,
+) -> str:
+    if value is None:
+        return f"{CLIENT_CALLBACK_PREFIX}:{action.value}"
+    return f"{CLIENT_CALLBACK_PREFIX}:{action.value}:{value}"
+
+
+def parse_client_callback_data(payload: str | None) -> ClientCallbackData:
+    if not isinstance(payload, str):
+        raise ValueError("Missing client callback payload")
+
+    prefix, separator, remainder = payload.partition(":")
+    if prefix != CLIENT_CALLBACK_PREFIX or not separator or not remainder:
+        raise ValueError("Not a client callback payload")
+
+    raw_action, value_separator, raw_value = remainder.partition(":")
+    try:
+        action = ClientMenuAction(raw_action)
+    except ValueError as exc:
+        raise ValueError("Unknown client action") from exc
+
+    value = raw_value if value_separator else None
+    return ClientCallbackData(action=action, value=value)
+
+
+def client_menu_buttons() -> tuple[MenuButton, ...]:
+    return tuple(
+        MenuButton(
+            action=action,
+            label=label,
+            callback_data=client_callback_data(action),
+        )
+        for action, label in _CLIENT_MENU_LAYOUT
     )

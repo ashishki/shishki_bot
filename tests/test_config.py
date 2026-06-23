@@ -13,6 +13,7 @@ def test_settings_load_from_environment(monkeypatch) -> None:
             "TIMEZONE": "Asia/Tbilisi",
             "DEFAULT_PLACE": "Test studio",
             "DEFAULT_MAP_URL": "https://maps.example/test",
+            "STYLIST_CONTACT_URL": "https://t.me/test_stylist",
             "WEBHOOK_SECRET": "test-secret",
             "ENV": "test",
         }
@@ -24,6 +25,7 @@ def test_settings_load_from_environment(monkeypatch) -> None:
         database_url="sqlite+aiosqlite:///:memory:",
         timezone="Asia/Tbilisi",
         default_place="Test studio",
+        stylist_contact_url="https://t.me/test_stylist",
         default_map_url="https://maps.example/test",
         webhook_secret="test-secret",
         env="test",

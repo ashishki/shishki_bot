@@ -8,10 +8,10 @@ Phase: 3
 ## Current State
 
 - Phase: 3
-- Baseline: T07 complete; booking, notification, and admin auth tests pass with 23 total tests.
+- Baseline: T08 complete; client booking handler tests pass with 30 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (23 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (30 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,14 +29,15 @@ Phase: 3
 
 ## Next Task
 
-T08: Client Booking Handlers
+T09: Admin Manual Booking And Edits
 
 Before editing, read:
 
-- `docs/tasks.md#t08-client-booking-handlers`
-- `docs/spec.md#feature-1---client-main-menu`
-- `docs/spec.md#feature-2---simple-haircut-booking`
+- `docs/tasks.md#t09-admin-manual-booking-and-edits`
+- `docs/spec.md#feature-4---admin-booking-management`
 - `docs/IMPLEMENTATION_CONTRACT.md`
+- `docs/IMPLEMENTATION_CONTRACT.md#admin-authorization`
+- `docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity`
 
 ## Verification
 
@@ -56,7 +57,7 @@ python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-
 
 ## Fix Queue
 
-empty - no P0/P1/P2 findings remain from Cycle 4 T07 targeted review.
+empty - no P0/P1/P2 findings remain from the T08 targeted light review.
 
 ## Capability State
 
@@ -120,6 +121,10 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
 - 2026-06-23 - T07 Admin Authorization And Menus: added allowlisted admin
   command/callback handlers, admin menu actions, callback payload validation,
   and router registration behind `ADMIN_TELEGRAM_IDS`.
+- 2026-06-23 - T08 Client Booking Handlers: added client start menu,
+  haircut slot selection with explicit confirmation, complex-service redirect,
+  active booking lookup, unknown-input fallback, and runtime async DB session
+  dispatch coverage.
 
 ## Completed Bootstrap Work
 

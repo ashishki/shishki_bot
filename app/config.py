@@ -19,6 +19,7 @@ class Settings:
     database_url: str
     timezone: str
     default_place: str
+    stylist_contact_url: str
     default_map_url: str | None = None
     webhook_secret: str | None = None
     env: str = "local"
@@ -37,6 +38,7 @@ def load_settings(source: Mapping[str, str] | None = None) -> Settings:
     timezone = _required(values, "TIMEZONE")
     _validate_timezone(timezone)
     default_place = _required(values, "DEFAULT_PLACE")
+    stylist_contact_url = _required(values, "STYLIST_CONTACT_URL")
 
     return Settings(
         bot_token=bot_token,
@@ -44,6 +46,7 @@ def load_settings(source: Mapping[str, str] | None = None) -> Settings:
         database_url=database_url,
         timezone=timezone,
         default_place=default_place,
+        stylist_contact_url=stylist_contact_url,
         default_map_url=_optional(values, "DEFAULT_MAP_URL"),
         webhook_secret=_optional(values, "WEBHOOK_SECRET"),
         env=_optional(values, "ENV") or "local",

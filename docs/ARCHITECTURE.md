@@ -206,6 +206,7 @@ enabling it.
 | `DATABASE_URL` | Database connection URL | `postgresql+asyncpg://user:pass@host/db` | Yes |
 | `TIMEZONE` | Business timezone | `Asia/Tbilisi` | Yes |
 | `DEFAULT_PLACE` | Human-readable appointment place/address | `Studio address` | Yes |
+| `STYLIST_CONTACT_URL` | Public stylist contact link for consultation redirects | `https://t.me/stylist` | Yes |
 | `DEFAULT_MAP_URL` | Optional map link | `https://maps.example/...` | No |
 | `WEBHOOK_SECRET` | Secret for webhook mode | `change-me` | No |
 | `ENV` | Runtime environment | `local` | No |

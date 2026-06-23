@@ -9,7 +9,9 @@ from __future__ import annotations
 import asyncio
 
 from app.bot.handlers.admin import build_admin_router
+from app.bot.handlers.client import build_client_router
 from app.config import Settings, load_settings
+from app.db.session import create_database_engine, create_session_factory
 
 
 async def run(settings: Settings | None = None) -> None:
@@ -28,10 +30,22 @@ async def run(settings: Settings | None = None) -> None:
             "aiogram is required to start the bot; install requirements.txt"
         ) from exc
 
+    engine = create_database_engine(active_settings.database_url)
+    session_factory = create_session_factory(engine)
+
     bot = Bot(token=active_settings.bot_token)
     dispatcher = Dispatcher()
     dispatcher.include_router(build_admin_router(active_settings))
-    await dispatcher.start_polling(bot)
+    dispatcher.include_router(
+        build_client_router(
+            active_settings,
+            async_session_factory=session_factory,
+        )
+    )
+    try:
+        await dispatcher.start_polling(bot)
+    finally:
+        await engine.dispose()
 
 
 def main() -> None:

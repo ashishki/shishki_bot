@@ -5,10 +5,10 @@ bot for one stylist.
 
 ## Current Status
 
-- Phase 2 is active. T05 is complete: booking service and slot locking are in
-  place with regression tests.
-- Next task: T06 message templates and notification service.
-- Cycle 1 P2 database hardening findings were addressed during T05.
+- Phase 3 is active. T08 is complete: client start, booking, complex-service
+  redirect, and active-booking handler tests are in place.
+- Next task: T09 admin manual booking and edits.
+- Cycle 4 T07 admin auth review findings were closed before T08.
 - Production v1 remains deterministic: no production LLM behavior or external
   skills are planned.
 
@@ -42,10 +42,12 @@ security checks on push and pull request.
 
 - `app/config.py` - environment-backed settings.
 - `app/main.py` - import-safe application entrypoint.
+- `app/bot/handlers/` - Telegram handler modules for admin and client flows.
+- `app/bot/keyboards.py` - reusable bot menu and callback payload definitions.
 - `app/db/models.py` - SQLAlchemy models for users, clients, slots, bookings,
   status history, notifications, reminders, and expenses.
 - `app/db/session.py` - async engine/session helpers.
-- `tests/` - smoke and database model tests.
+- `tests/` - smoke, model, service, notification, and handler tests.
 
 ## Workflow
 

@@ -248,6 +248,8 @@ Owner:      codex
 Phase:      3
 Type:       none
 Depends-On: T05 T06
+Status:     [x] complete
+Completed:  2026-06-23
 
 Objective: |
   Implement Telegram client handlers for start menu, simple haircut booking,
@@ -267,7 +269,10 @@ Acceptance-Criteria:
 Files:
   - app/bot/handlers/client.py
   - app/bot/keyboards.py
+  - app/config.py
+  - app/main.py
   - tests/test_client_handlers.py
+  - tests/test_config.py
 
 Context-Refs:
   - docs/spec.md#feature-1---client-main-menu

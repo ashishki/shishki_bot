@@ -144,3 +144,12 @@ Status: append-only
 - Evidence collected: initial targeted review findings; handler-boundary fixes; repeat review with no P0/P1/P2 findings; full verification.
 - Follow-ups: Proceed to T08 client booking handlers.
 - Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 0.
+
+### 2026-06-23 - T08 - Client Booking Handlers
+
+- Scope: `app/bot/handlers/client.py`, `app/bot/keyboards.py`, `app/config.py`, `app/main.py`, `tests/test_client_handlers.py`, `tests/test_config.py`, `docs/CODEX_PROMPT.md`, `docs/tasks.md`, `docs/EVIDENCE_INDEX.md`
+- Why: Add the client Telegram flow for start menu, haircut booking, complex-service redirect, active booking lookup, and reschedule/cancel contact path.
+- Decisions applied: `D-002`, `D-003`, `D-004`
+- Evidence collected: client handler tests passed; async callback dispatch coverage passed; full pytest passed; ruff check; ruff format --check; integrity check; skill security gate.
+- Follow-ups: T09 should build admin-created complex bookings and admin edits on the same booking/notification service boundaries.
+- Notes: Targeted light review found runtime session wiring and confirmation-step gaps; both were fixed before completion. Final verification passed with 30 tests.
