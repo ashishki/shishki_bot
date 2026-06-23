@@ -81,3 +81,12 @@ Status: append-only
 - Evidence collected: `tests/test_models.py` passed; full pytest passed; ruff check; ruff format --check; integrity check; skill security gate.
 - Follow-ups: T05 should build booking creation and slot locking on these models.
 - Notes: `app/db/__init__.py` was added as package glue for the new database module.
+
+### 2026-06-23 - Phase 1 - Review And Archive
+
+- Scope: `docs/audit/STRATEGY_NOTE.md`, `docs/audit/META_ANALYSIS.md`, `docs/audit/ARCH_REPORT.md`, `docs/audit/REVIEW_REPORT.md`, `docs/archive/PHASE1_REVIEW.md`, `docs/audit/PHASE_REPORT_LATEST.md`, README indexes, `docs/CODEX_PROMPT.md`
+- Why: Close the Phase 1 boundary before Phase 2 booking work starts.
+- Decisions applied: `D-001`, `D-002`, `D-003`, `D-004`
+- Evidence collected: Cycle 1 review report; phase archive; integrity check.
+- Follow-ups: T05 should address or account for P2 findings CODE-1 and CODE-2 while implementing slot locking.
+- Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 2.

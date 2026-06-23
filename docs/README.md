@@ -19,8 +19,10 @@ This directory holds the Standard AI Workflow Playbook artifacts for
 
 ## Current State
 
-- Phase 1 Standard bootstrap is active.
-- Application code has not started.
+- Phase 1 Standard bootstrap is complete through T04.
+- Phase 2 is ready to start with T05: booking service and slot locking.
+- Current application code includes settings, an import-safe entrypoint,
+  SQLAlchemy database models, async session helpers, CI, and smoke/model tests.
 - Production v1 is deterministic: no RAG, no production LLM behavior, no
   autonomous agent runtime.
 
@@ -43,12 +45,12 @@ This directory holds the Standard AI Workflow Playbook artifacts for
 
 ## Active Tasks
 
-- `docs/tasks.md` - T01 is Project Skeleton.
+- `docs/tasks.md` - T05 is Booking Service And Slot Locking.
 
 ## Known Gaps
 
-- The project-specific application stack and test command are not defined yet.
-  T01/T02 create them.
+- Cycle 1 review found two open P2 database hardening items: make
+  `Booking.slot_id` non-null and add async session helper tests.
 
 ## Authority
 

@@ -1,7 +1,17 @@
 # shishki_bot
 
-Standard-mode AI Workflow Playbook scaffold for a Telegram booking and
-lightweight operations bot for one stylist.
+Standard-mode Python scaffold for a Telegram booking and lightweight operations
+bot for one stylist.
+
+## Current Status
+
+- Phase 1 is complete through T04: project skeleton, CI/local verification,
+  smoke tests, and database models/session primitives.
+- Phase 2 is ready to start with T05: booking service and slot locking.
+- Cycle 1 review found no P0/P1 blockers. Two P2 database hardening findings
+  are tracked in `docs/CODEX_PROMPT.md`.
+- Production v1 remains deterministic: no production LLM behavior or external
+  skills are planned.
 
 ## Start Here
 
@@ -28,6 +38,15 @@ python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-
 
 The CI workflow runs the same lint, format, test, integrity, and external skill
 security checks on push and pull request.
+
+## Repository Layout
+
+- `app/config.py` - environment-backed settings.
+- `app/main.py` - import-safe application entrypoint.
+- `app/db/models.py` - SQLAlchemy models for users, clients, slots, bookings,
+  status history, notifications, reminders, and expenses.
+- `app/db/session.py` - async engine/session helpers.
+- `tests/` - smoke and database model tests.
 
 ## Workflow
 

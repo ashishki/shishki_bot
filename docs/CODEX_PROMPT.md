@@ -1,17 +1,17 @@
 # CODEX_PROMPT.md
 
-Version: 1.0
+Version: 1.1
 Date: 2026-06-23
 Mode: Standard
-Phase: 1
+Phase: 2
 
 ## Current State
 
-- Phase: 1
-- Baseline: T04 complete; local and CI verification are documented and active with 5 tests passing.
+- Phase: 2
+- Baseline: Phase 1 complete through T04; Cycle 1 review complete with no P0/P1 findings and 2 open P2 findings. T05 is the next implementation task.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (5 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (5 passed), integrity check, and skill security gate passed. Cycle 1 audit reran `python3 tools/integrity_check.py --root .` successfully; direct pytest rerun was unavailable from `/usr/bin/python3` because pytest is not installed there.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -55,7 +55,7 @@ python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-
 
 ## Fix Queue
 
-empty
+empty - no P0/P1 blockers from Cycle 1; proceed to the phase queue.
 
 ## Capability State
 
@@ -95,7 +95,10 @@ empty
 
 ## Open Findings
 
-none
+| ID | Sev | Description | Status | Next |
+|----|-----|-------------|--------|------|
+| CODE-1 | P2 | `Booking.slot_id` is nullable even though booking creation/reschedule must target and lock a slot. | Open | Make `slot_id` non-null and add an integrity regression test when hardening T05/T04 persistence. |
+| CODE-2 | P2 | Async session helpers lack tests for engine creation, session factory, create/drop helpers, and `session_scope` commit/rollback. | Open | Add async persistence tests using `sqlite+aiosqlite:///:memory:` before relying on these helpers in booking service work. |
 
 ## Completed Tasks
 
