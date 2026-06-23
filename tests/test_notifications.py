@@ -9,6 +9,7 @@ from app.bot.messages import (
     admin_new_booking_message,
     booking_cancelled_message,
     booking_confirmation_message,
+    booking_reminder_message,
     booking_rescheduled_message,
 )
 from app.db.models import (
@@ -103,6 +104,27 @@ def test_admin_new_booking_message_contains_required_fields() -> None:
     assert "10:00" in message
     assert "Test studio" in message
     assert "90 GEL" in message
+
+
+def test_reminder_message_contains_required_fields_and_location_links() -> None:
+    booking = _booking(starts_at=datetime(2026, 6, 27, 6, 0, tzinfo=UTC))
+
+    message = booking_reminder_message(
+        booking,
+        reminder_kind="24h",
+        timezone=ZoneInfo("Asia/Tbilisi"),
+        yandex_map_url="https://yandex.example/test",
+        google_map_url="https://google.example/test",
+    )
+
+    assert "Напоминание: запись завтра" in message
+    assert "Стрижка" in message
+    assert "27 июня, суббота" in message
+    assert "10:00" in message
+    assert "Адрес: Test studio" in message
+    assert '<a href="https://yandex.example/test">Yandex</a>' in message
+    assert '<a href="https://google.example/test">Google</a>' in message
+    assert "Моя запись" in message
 
 
 def test_notification_delivery_is_logged() -> None:

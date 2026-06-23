@@ -252,3 +252,12 @@ Status: append-only
 - Evidence collected: ruff check; ruff format --check; full pytest passed with 62 tests; integrity check; skill security gate; local smoke-check for client start/date buttons and admin schedule; bot process started with PID recorded in `bot.pid`.
 - Follow-ups: Before real client use, configure durable hosting/process supervision and a backup path for the local database.
 - Notes: No payments, calendar sync, external AI behavior, or new admin users were added.
+
+### 2026-06-23 - Runtime Reminder Delivery
+
+- Scope: `app/main.py`, `app/scheduler.py`, `app/services/reminders.py`, `app/bot/messages.py`, `tests/test_reminders.py`, `tests/test_notifications.py`, `README.md`, `docs/CODEX_PROMPT.md`, `docs/EVIDENCE_INDEX.md`
+- Why: Connect the existing reminder scheduling service to the live bot runtime so 24h and 3h reminders are delivered automatically.
+- Decisions applied: `D-002`, `D-004`
+- Evidence collected: ruff check; ruff format --check; full pytest passed with 66 tests; integrity check; skill security gate; `shishki-bot.service` restarted and active; reminder logs present for the current future booking.
+- Follow-ups: Monitor first live reminder delivery in `reminder_logs` and `journalctl -u shishki-bot.service`.
+- Notes: SQLite naive datetimes are treated as the business timezone for reminder due checks.

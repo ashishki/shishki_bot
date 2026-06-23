@@ -95,6 +95,38 @@ def booking_cancelled_message(
     return "\n".join(lines)
 
 
+def booking_reminder_message(
+    booking: Booking,
+    *,
+    reminder_kind: str,
+    timezone: ZoneInfo = DEFAULT_MESSAGE_TIMEZONE,
+    yandex_map_url: str | None = None,
+    google_map_url: str | None = None,
+    default_map_url: str | None = None,
+) -> str:
+    title = {
+        "24h": "Напоминание: запись завтра",
+        "3h": "Напоминание: запись сегодня",
+    }.get(reminder_kind, "Напоминание о записи")
+    return "\n".join(
+        [
+            title,
+            "",
+            _html(_service_label(booking.service)),
+            _format_date(booking.starts_at, timezone),
+            _format_time(booking.starts_at, timezone),
+            format_location_line(
+                booking.place,
+                yandex_map_url=yandex_map_url,
+                google_map_url=google_map_url,
+                default_map_url=default_map_url,
+            ),
+            "",
+            "Если нужно перенести или отменить запись, откройте «Моя запись».",
+        ]
+    )
+
+
 def booking_updated_message(
     booking: Booking,
     *,

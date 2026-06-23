@@ -124,7 +124,7 @@ The current runtime starts aiogram polling. Deployment and operator notes live i
 - `app/db/models.py` - SQLAlchemy models for users, clients, slots, bookings,
   status history, notifications, reminders, and expenses.
 - `app/db/session.py` - async engine/session helpers.
-- `app/scheduler.py` - reminder recovery job DTO adapter.
+- `app/scheduler.py` - reminder recovery and runtime delivery scheduler.
 - `app/services/` - booking, notification, reminder, finance, and client history
   services.
 - `tests/` - smoke, model, service, notification, and handler tests.

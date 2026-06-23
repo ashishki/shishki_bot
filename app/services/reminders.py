@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
@@ -27,6 +28,7 @@ RECOVERABLE_REMINDER_STATUSES = (
     DeliveryStatus.PENDING,
     DeliveryStatus.FAILED,
 )
+DEFAULT_REMINDER_TIMEZONE = ZoneInfo("Asia/Tbilisi")
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,7 +38,7 @@ class ReminderSchedule:
 
 
 def calculate_reminder_times(booking: Booking) -> tuple[ReminderSchedule, ...]:
-    starts_at = _as_utc(booking.starts_at)
+    starts_at = _booking_start_for_reminders(booking.starts_at)
     return tuple(
         ReminderSchedule(
             reminder_kind=kind,
@@ -58,10 +60,11 @@ def rebuild_reminder_logs(
         select(Booking)
         .where(
             Booking.status.in_(ACTIVE_REMINDER_BOOKING_STATUSES),
-            Booking.starts_at > cutoff,
         )
         .order_by(Booking.starts_at)
     ):
+        if _as_utc(booking.starts_at) <= cutoff:
+            continue
         for schedule in calculate_reminder_times(booking):
             log = ensure_reminder_log(session, booking=booking, schedule=schedule)
             if log.status in RECOVERABLE_REMINDER_STATUSES:
@@ -80,7 +83,8 @@ def recover_pending_reminders(
     return [
         log
         for log in rebuild_reminder_logs(session, now=cutoff)
-        if log.scheduled_for <= cutoff and log.status in RECOVERABLE_REMINDER_STATUSES
+        if _as_utc(log.scheduled_for) <= cutoff
+        and log.status in RECOVERABLE_REMINDER_STATUSES
     ]
 
 
@@ -206,7 +210,13 @@ def _recipient_telegram_id(booking: Booking) -> int | None:
     return user.telegram_id if user else None
 
 
+def _booking_start_for_reminders(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(UTC)
+
+
 def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
-        return value.replace(tzinfo=UTC)
+        return value.replace(tzinfo=DEFAULT_REMINDER_TIMEZONE).astimezone(UTC)
     return value.astimezone(UTC)

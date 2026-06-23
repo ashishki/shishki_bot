@@ -12,6 +12,7 @@ from app.bot.handlers.admin import build_admin_router
 from app.bot.handlers.client import build_client_router
 from app.config import Settings, load_settings
 from app.db.session import create_database_engine, create_session_factory
+from app.scheduler import start_reminder_scheduler
 
 
 async def run(settings: Settings | None = None) -> None:
@@ -51,9 +52,15 @@ async def run(settings: Settings | None = None) -> None:
             async_session_factory=session_factory,
         )
     )
+    reminder_scheduler = start_reminder_scheduler(
+        active_settings,
+        bot=bot,
+        loop=asyncio.get_running_loop(),
+    )
     try:
         await dispatcher.start_polling(bot)
     finally:
+        reminder_scheduler.shutdown(wait=False)
         await engine.dispose()
 
 

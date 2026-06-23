@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.config import Settings
 from app.db.models import (
     Base,
     Booking,
@@ -16,7 +17,11 @@ from app.db.models import (
     Slot,
     User,
 )
-from app.scheduler import rebuild_due_reminder_jobs, rebuild_reminder_jobs
+from app.scheduler import (
+    rebuild_due_reminder_jobs,
+    rebuild_reminder_jobs,
+    send_due_reminders,
+)
 from app.services.reminders import (
     REMINDER_3H,
     REMINDER_24H,
@@ -40,6 +45,17 @@ def test_reminder_times() -> None:
     assert tuple(schedule.scheduled_for for schedule in schedules) == (
         datetime(2026, 6, 23, 12, 0, tzinfo=UTC),
         datetime(2026, 6, 24, 9, 0, tzinfo=UTC),
+    )
+
+
+def test_naive_sqlite_times_are_treated_as_business_timezone() -> None:
+    booking = _booking_for(datetime(2026, 6, 27, 13, 0))
+
+    schedules = calculate_reminder_times(booking)
+
+    assert tuple(schedule.scheduled_for for schedule in schedules) == (
+        datetime(2026, 6, 26, 13, 0),
+        datetime(2026, 6, 27, 10, 0),
     )
 
 
@@ -96,6 +112,85 @@ def test_scheduler_rebuilds_future_and_due_jobs_without_detached_orm() -> None:
     assert all(job.booking_id == booking_id for job in all_jobs)
     assert {job.reminder_kind for job in all_jobs} == {REMINDER_24H, REMINDER_3H}
     assert due_jobs[0].reminder_kind == REMINDER_24H
+
+
+def test_scheduler_job_sends_due_reminders() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(engine, expire_on_commit=False)
+    sender = FakeSender()
+    now = datetime(2026, 6, 23, 13, 0, tzinfo=UTC)
+
+    with factory() as session:
+        booking = _create_booking(
+            session,
+            starts_at=datetime(2026, 6, 24, 12, 0, tzinfo=UTC),
+        )
+        session.commit()
+        booking_id = booking.id
+
+    attempted = send_due_reminders(
+        factory,
+        _settings(),
+        sender,
+        now=now,
+    )
+
+    with factory() as session:
+        logs = session.scalars(
+            select(ReminderLog).order_by(ReminderLog.reminder_kind)
+        ).all()
+
+    assert len(attempted) == 1
+    assert sender.messages[0][0] == 123
+    assert "Напоминание: запись завтра" in sender.messages[0][1]
+    assert "Стрижка" in sender.messages[0][1]
+    assert "Test studio" in sender.messages[0][1]
+    assert {log.booking_id for log in logs} == {booking_id}
+    assert [log.status for log in logs] == [
+        DeliveryStatus.SENT,
+        DeliveryStatus.PENDING,
+    ]
+
+
+def test_scheduler_job_sends_naive_local_due_reminders() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(engine, expire_on_commit=False)
+    sender = FakeSender()
+
+    with factory() as session:
+        booking = _create_booking(
+            session,
+            starts_at=datetime(2026, 6, 27, 13, 0),
+        )
+        session.commit()
+        booking_id = booking.id
+
+    attempted = send_due_reminders(
+        factory,
+        _settings(),
+        sender,
+        now=datetime(2026, 6, 26, 9, 1, tzinfo=UTC),
+    )
+
+    with factory() as session:
+        logs = session.scalars(
+            select(ReminderLog).order_by(ReminderLog.reminder_kind)
+        ).all()
+
+    assert len(attempted) == 1
+    assert sender.messages[0][0] == 123
+    assert "Напоминание: запись завтра" in sender.messages[0][1]
+    assert {log.booking_id for log in logs} == {booking_id}
+    assert [log.scheduled_for for log in logs] == [
+        datetime(2026, 6, 26, 13, 0),
+        datetime(2026, 6, 27, 10, 0),
+    ]
+    assert [log.status for log in logs] == [
+        DeliveryStatus.SENT,
+        DeliveryStatus.PENDING,
+    ]
 
 
 def test_no_duplicate_reminders() -> None:
@@ -442,3 +537,15 @@ def _create_booking(
     session.add(booking)
     session.flush()
     return booking
+
+
+def _settings() -> Settings:
+    return Settings(
+        bot_token="test-token",
+        admin_telegram_ids=(111,),
+        database_url="sqlite+aiosqlite:///:memory:",
+        timezone="Asia/Tbilisi",
+        default_place="Test studio",
+        stylist_contact_url="https://t.me/test_stylist",
+        env="test",
+    )
