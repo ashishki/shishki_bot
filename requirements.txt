@@ -1,0 +1,7 @@
+# Runtime dependencies for production deployment.
+aiogram>=3.7,<4
+apscheduler>=3.10,<4
+sqlalchemy>=2.0,<3
+aiosqlite>=0.20,<1
+asyncpg>=0.29,<1
+
