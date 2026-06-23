@@ -63,3 +63,12 @@ Status: append-only
 - Evidence collected: ruff check; ruff format --check; pytest; `python3 tools/integrity_check.py --root .`; `python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-scanner`
 - Follow-ups: T03 should keep the smoke-test baseline explicit and import-safe.
 - Notes: GitHub Actions now installs `requirements-dev.txt` and runs the same verification gates.
+
+### 2026-06-23 - T03 - First Smoke Tests
+
+- Scope: `tests/test_config.py`, `tests/test_imports.py`, `docs/CODEX_PROMPT.md`, `docs/tasks.md`, `docs/EVIDENCE_INDEX.md`
+- Why: Pin the early no-secret/no-network import baseline before database and handler work begins.
+- Decisions applied: `D-002`, `D-003`
+- Evidence collected: ruff check; ruff format --check; pytest; integrity check; skill security gate.
+- Follow-ups: T04 can add database models and persistence tests on top of the smoke baseline.
+- Notes: Import smoke test fails if `app.main` imports `aiogram` during module import.

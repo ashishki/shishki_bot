@@ -80,6 +80,8 @@ Owner:      codex
 Phase:      1
 Type:       none
 Depends-On: T01 T02
+Status:     [x] complete
+Completed:  2026-06-23
 
 Objective: |
   Add the first smoke tests for settings import, application import, and

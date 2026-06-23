@@ -8,7 +8,7 @@ Phase: 1
 ## Current State
 
 - Phase: 1
-- Baseline: T02 complete; local and CI verification are documented and active with 2 smoke tests passing.
+- Baseline: T03 complete; local and CI verification are documented and active with 2 smoke tests passing.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
 - Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (2 passed), integrity check, and skill security gate passed.
@@ -29,12 +29,13 @@ Phase: 1
 
 ## Next Task
 
-T03: First Smoke Tests
+T04: Database Models And Migrations
 
 Before editing, read:
 
-- `docs/tasks.md#t03-first-smoke-tests`
+- `docs/tasks.md#t04-database-models-and-migrations`
 - `docs/IMPLEMENTATION_CONTRACT.md`
+- `docs/ARCHITECTURE.md#booking-statuses`
 - `docs/spec.md#feature-8---operations-and-reliability`
 
 ## Verification
@@ -104,6 +105,9 @@ none
   tests for settings and imports.
 - 2026-06-23 - T02 CI And Local Verification: activated GitHub Actions
   verification and documented the full local command in README and this handoff.
+- 2026-06-23 - T03 First Smoke Tests: strengthened settings and import smoke
+  tests so supplied test settings do not read real environment values and
+  importing `app.main` does not import `aiogram`.
 
 ## Completed Bootstrap Work
 

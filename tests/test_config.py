@@ -1,7 +1,10 @@
 from app.config import Settings, load_settings
 
 
-def test_settings_load_from_environment() -> None:
+def test_settings_load_from_environment(monkeypatch) -> None:
+    monkeypatch.setenv("BOT_TOKEN", "real-env-token-should-not-be-used")
+    monkeypatch.setenv("ADMIN_TELEGRAM_IDS", "999")
+
     settings = load_settings(
         {
             "BOT_TOKEN": "test-token",
