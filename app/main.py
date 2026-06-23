@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 
+from app.bot.handlers.admin import build_admin_router
 from app.config import Settings, load_settings
 
 
@@ -29,6 +30,7 @@ async def run(settings: Settings | None = None) -> None:
 
     bot = Bot(token=active_settings.bot_token)
     dispatcher = Dispatcher()
+    dispatcher.include_router(build_admin_router(active_settings))
     await dispatcher.start_polling(bot)
 
 

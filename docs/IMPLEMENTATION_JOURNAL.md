@@ -126,3 +126,21 @@ Status: append-only
 - Evidence collected: Cycle 3 targeted review report; ruff check; ruff format --check; full pytest; integrity check; skill security gate.
 - Follow-ups: Proceed to T07 admin authorization and menus.
 - Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 0.
+
+### 2026-06-23 - T07 - Admin Authorization And Menus
+
+- Scope: `app/bot/handlers/admin.py`, `app/bot/keyboards.py`, `app/main.py`, `tests/test_admin_auth.py`, `docs/CODEX_PROMPT.md`, `docs/tasks.md`, `docs/EVIDENCE_INDEX.md`
+- Why: Add the admin authorization boundary and menu actions before client booking handlers start wiring bot flows.
+- Decisions applied: `D-002`, `D-003`
+- Evidence collected: admin auth tests passed; full pytest passed; ruff check; ruff format --check; integrity check; skill security gate.
+- Follow-ups: T08 should reuse `app/bot/keyboards.py` patterns for client menu actions and keep handler imports side-effect-free.
+- Notes: `app/main.py` now registers the admin router at runtime while keeping `aiogram` imports deferred.
+
+### 2026-06-23 - Cycle 4 - Targeted T07 Review
+
+- Scope: `docs/archive/CYCLE4_T07_REVIEW.md`, T07 admin auth and menu files.
+- Why: Admin authorization is a contract security boundary and required targeted review after implementation.
+- Decisions applied: `D-002`, `D-003`
+- Evidence collected: initial targeted review findings; handler-boundary fixes; repeat review with no P0/P1/P2 findings; full verification.
+- Follow-ups: Proceed to T08 client booking handlers.
+- Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 0.

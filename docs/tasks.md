@@ -218,6 +218,8 @@ Owner:      codex
 Phase:      2
 Type:       none
 Depends-On: T01
+Status:     [x] complete
+Completed:  2026-06-23
 
 Objective: |
   Implement admin allowlist checks and menu handlers for schedule and business
@@ -234,6 +236,7 @@ Acceptance-Criteria:
 Files:
   - app/bot/handlers/admin.py
   - app/bot/keyboards.py
+  - app/main.py
   - tests/test_admin_auth.py
 
 Context-Refs:

@@ -19,6 +19,8 @@ This index points to durable proof. It is not proof by itself.
 | Cycle 2 T05 targeted review | audit | `docs/archive/CYCLE2_T05_REVIEW.md` | Deep review for T05 booking transaction and slot locking. Stop-Ship: No. P0: 0, P1: 0, P2: 0. | 2026-06-23 | Yes |
 | T06 notifications | tests | `tests/test_notifications.py`, `app/bot/messages.py`, `app/services/notifications.py` | Confirmation, reschedule, cancellation, and admin booking templates include appointment details in business timezone; notification service logs sent, failed delivery, and missing Telegram identity attempts with fake sender tests. | 2026-06-23 | Yes |
 | Cycle 3 T06 targeted review | audit | `docs/archive/CYCLE3_T06_REVIEW.md` | Deep review for T06 notification delivery semantics. Stop-Ship: No. P0: 0, P1: 0, P2: 0. | 2026-06-23 | Yes |
+| T07 admin authorization | tests | `tests/test_admin_auth.py`, `app/bot/handlers/admin.py`, `app/bot/keyboards.py`, `app/main.py` | Admin menu command and admin callback handling require allowlisted Telegram IDs; forged `admin:*` callbacks from non-admin users are denied; malformed callback payloads are rejected; admin menu exposes today, this week, manual booking, change booking, cancel booking, revenue, and clients actions. | 2026-06-23 | Yes |
+| Cycle 4 T07 targeted review | audit | `docs/archive/CYCLE4_T07_REVIEW.md` | Deep review for T07 admin authorization boundary. Initial P1/P2 findings were fixed and repeat review reported no remaining P0/P1/P2 findings. Stop-Ship: No. P0: 0, P1: 0, P2: 0. | 2026-06-23 | Yes |
 
 ## Retrieval Rules
 

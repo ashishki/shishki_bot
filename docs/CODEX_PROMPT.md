@@ -3,15 +3,15 @@
 Version: 1.1
 Date: 2026-06-23
 Mode: Standard
-Phase: 2
+Phase: 3
 
 ## Current State
 
-- Phase: 2
-- Baseline: T06 complete; booking and notification tests pass with 20 total tests.
+- Phase: 3
+- Baseline: T07 complete; booking, notification, and admin auth tests pass with 23 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (20 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (23 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,13 +29,14 @@ Phase: 2
 
 ## Next Task
 
-T07: Admin Authorization And Menus
+T08: Client Booking Handlers
 
 Before editing, read:
 
-- `docs/tasks.md#t07-admin-authorization-and-menus`
+- `docs/tasks.md#t08-client-booking-handlers`
+- `docs/spec.md#feature-1---client-main-menu`
+- `docs/spec.md#feature-2---simple-haircut-booking`
 - `docs/IMPLEMENTATION_CONTRACT.md`
-- `docs/IMPLEMENTATION_CONTRACT.md#admin-authorization`
 
 ## Verification
 
@@ -55,7 +56,7 @@ python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-
 
 ## Fix Queue
 
-empty - no P0/P1 blockers from Cycle 1; proceed to the phase queue.
+empty - no P0/P1/P2 findings remain from Cycle 4 T07 targeted review.
 
 ## Capability State
 
@@ -116,6 +117,9 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
 - 2026-06-23 - T06 Message Templates And Notification Service: added reusable
   booking confirmation/change templates and notification delivery logging with
   fake-sender tests for success and failure.
+- 2026-06-23 - T07 Admin Authorization And Menus: added allowlisted admin
+  command/callback handlers, admin menu actions, callback payload validation,
+  and router registration behind `ADMIN_TELEGRAM_IDS`.
 
 ## Completed Bootstrap Work
 
