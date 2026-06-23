@@ -8,10 +8,10 @@ Phase: 2
 ## Current State
 
 - Phase: 2
-- Baseline: T05 complete; booking creation and slot-locking tests pass with 14 total tests.
+- Baseline: T06 complete; booking and notification tests pass with 20 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (14 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (20 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,14 +29,13 @@ Phase: 2
 
 ## Next Task
 
-T06: Message Templates And Notification Service
+T07: Admin Authorization And Menus
 
 Before editing, read:
 
-- `docs/tasks.md#t06-message-templates-and-notification-service`
+- `docs/tasks.md#t07-admin-authorization-and-menus`
 - `docs/IMPLEMENTATION_CONTRACT.md`
-- `docs/spec.md#feature-5---reminders-and-notifications`
-- `docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity`
+- `docs/IMPLEMENTATION_CONTRACT.md#admin-authorization`
 
 ## Verification
 
@@ -114,6 +113,9 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
 - 2026-06-23 - T05 Booking Service And Slot Locking: added deterministic
   haircut booking creation, slot availability checks, double-booking
   prevention, non-null booking slot invariant, and async session helper tests.
+- 2026-06-23 - T06 Message Templates And Notification Service: added reusable
+  booking confirmation/change templates and notification delivery logging with
+  fake-sender tests for success and failure.
 
 ## Completed Bootstrap Work
 

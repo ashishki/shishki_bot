@@ -17,6 +17,8 @@ This index points to durable proof. It is not proof by itself.
 | Phase 1 review archive | audit | `docs/archive/PHASE1_REVIEW.md`, `docs/audit/PHASE_REPORT_LATEST.md` | Deep review for Phase 1 T01-T04. Stop-Ship: No. P0: 0, P1: 0, P2: 2. | 2026-06-23 | Yes |
 | T05 booking service | tests | `tests/test_booking_service.py`, `tests/test_models.py`, `app/services/booking.py` | Confirmed haircut booking defaults to 90 GEL and 60 minutes; double booking is rejected; coloring self-booking is rejected; past/blocked/booked slots are filtered or rejected; booking slot is non-null; async session helpers commit/rollback. | 2026-06-23 | Yes |
 | Cycle 2 T05 targeted review | audit | `docs/archive/CYCLE2_T05_REVIEW.md` | Deep review for T05 booking transaction and slot locking. Stop-Ship: No. P0: 0, P1: 0, P2: 0. | 2026-06-23 | Yes |
+| T06 notifications | tests | `tests/test_notifications.py`, `app/bot/messages.py`, `app/services/notifications.py` | Confirmation, reschedule, cancellation, and admin booking templates include appointment details in business timezone; notification service logs sent, failed delivery, and missing Telegram identity attempts with fake sender tests. | 2026-06-23 | Yes |
+| Cycle 3 T06 targeted review | audit | `docs/archive/CYCLE3_T06_REVIEW.md` | Deep review for T06 notification delivery semantics. Stop-Ship: No. P0: 0, P1: 0, P2: 0. | 2026-06-23 | Yes |
 
 ## Retrieval Rules
 

@@ -1,33 +1,39 @@
-# META_ANALYSIS - Cycle 2
+# META_ANALYSIS - Cycle 3
 _Date: 2026-06-23 · Type: targeted_
 
 ## Project State
-Phase 2 has T05 - Booking Service And Slot Locking complete but uncommitted. Next: T06 - Message Templates And Notification Service.
-Baseline: 11 pass, 0 skip, 0 fail. Changed vs Cycle 1: documented pytest baseline increased from 5 to 11 passing tests after T05; local Cycle 2 verification also passed ruff check, ruff format --check, pytest, integrity check, and skill security gate.
+
+Phase 2 has T05 and T06 complete. Next: T07 - Admin Authorization And Menus.
+
+Baseline: recorded T06 verification is 17 passed, 0 skipped, 0 failed in `python -m pytest tests -q`; this is +3 tests versus Cycle 2's 14 passed baseline. Recorded T06 handoff also says ruff check, ruff format --check, integrity check, and skill security gate passed. Local meta rerun on 2026-06-23 confirmed `python3 tools/integrity_check.py --root .` and `python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-scanner` pass, but `python` is not on PATH and the system `python3` lacks `pytest` and `ruff`, so pytest/ruff were not rerun in this shell.
 
 ## Open Findings
+
 | ID | Sev | Description | Files | Status |
 |----|-----|-------------|-------|--------|
-| CODE-1 | P2 | `Booking.slot_id` was nullable even though booking creation/reschedule must target and lock a slot. | `app/db/models.py`, `tests/test_models.py` | Claimed addressed in T05; verify closure in PROMPT_2 because this targeted review was triggered by booking locking changes. |
-| CODE-2 | P2 | Async database/session helpers lacked tests for engine creation, session factory, create/drop helpers, and `session_scope` commit/rollback behavior. | `app/db/session.py`, `tests/test_models.py` | Claimed addressed in T05; verify closure in PROMPT_2 with emphasis on transaction rollback behavior. |
+| None | n/a | No open P0/P1/P2 findings are listed in `docs/CODEX_PROMPT.md` or Cycle 2 `docs/audit/REVIEW_REPORT.md`. | n/a | n/a |
 
 ## PROMPT_1 Scope (architecture)
-- Booking service transaction boundary: deterministic simple booking creation, slot availability checks, `SELECT ... FOR UPDATE` expectations, and database uniqueness fallback.
-- Slot locking and double-booking prevention: one-booking-per-slot invariant, blocked/past slot handling, and behavior under concurrent sessions.
-- Persistence invariants changed by T05: non-null `Booking.slot_id`, booking-to-slot relationship typing, and status history created on client self-booking.
-- T06 handoff boundary: notification service will depend on confirmed booking details created by T05, but should not silently mutate booking state without logged notification attempts.
+
+- Notification delivery semantics: verify T06's send/log behavior satisfies `Client Notification Integrity`, especially explicit failed-log behavior when client Telegram identity is missing or sender delivery fails.
+- Template data contract: verify confirmation, reschedule, cancellation, and admin booking messages expose the required booking fields without adding external integrations or production AI behavior.
+- Time and locale boundary: review whether message templates should use project timezone settings rather than UTC formatting before client-facing handlers consume them.
+- Transaction and auditability boundary: verify notification logs participate in caller-owned database sessions clearly enough for later booking/admin change flows.
+- T07 handoff interaction: verify notification service is ready for admin reschedule/cancel flows without widening scope beyond T06.
 
 ## PROMPT_2 Scope (code, priority order)
-1. `app/services/booking.py` (new/security-critical booking transaction and slot locking logic)
-2. `tests/test_booking_service.py` (new acceptance and regression coverage for T05)
-3. `app/db/models.py` (changed booking slot invariant)
-4. `tests/test_models.py` (changed regression coverage for non-null slot and async sessions)
-5. `app/db/session.py` (regression check for helper behavior covered by new tests)
-6. `app/services/__init__.py` (new package boundary)
-7. `docs/tasks.md`, `docs/CODEX_PROMPT.md`, `docs/IMPLEMENTATION_JOURNAL.md`, `docs/EVIDENCE_INDEX.md` (changed handoff/evidence consistency)
+
+1. `app/services/notifications.py` (new): delivery result logging, failure handling, session flush behavior, recipient lookup, and sender protocol.
+2. `app/bot/messages.py` (new): client/admin template required fields, cancellation details, money formatting, and timezone/date formatting.
+3. `tests/test_notifications.py` (new): coverage for success, sender failure, missing Telegram identity, required fields, and no real Telegram sends.
+4. `app/db/models.py` (regression check): `NotificationLog`, `DeliveryStatus`, booking/client/user relationships, and nullable fields used by T06.
+5. `app/services/booking.py` (regression check): confirmed booking fields consumed by notification templates and future notification triggers.
+6. `docs/tasks.md`, `docs/CODEX_PROMPT.md`, `docs/IMPLEMENTATION_CONTRACT.md`, `docs/spec.md` (contract check): ensure T06 completion and T07 next-task handoff match the notification integrity requirements.
 
 ## Cycle Type
-Targeted - this is not a phase boundary. The review is risk-triggered because T05 touched booking transaction/locking behavior, a deep-review escalation surface under `docs/IMPLEMENTATION_CONTRACT.md`.
+
+Targeted - T06 touched notification delivery semantics, which is an escalation surface under `docs/IMPLEMENTATION_CONTRACT.md`. The review should focus on the newly added message templates, notification service, tests, and contract fit, not a full phase review.
 
 ## Notes for PROMPT_3
-Consolidation should focus on whether T05 genuinely closes CODE-1 and CODE-2, whether the slot-locking design is sufficient for the selected database/runtime assumptions, and whether any P0/P1 booking-integrity issue must block T06. Keep notification concerns limited to T06 handoff risks unless T05 state changes already require notification semantics.
+
+Consolidation should decide whether any T06 issue blocks T07. Pay special attention to silent notification failure risk, timezone correctness for client-facing appointment details, and whether tests prove failed delivery is durably logged without sending real Telegram messages.

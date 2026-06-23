@@ -1,82 +1,79 @@
-# ARCH_REPORT - Cycle 2 Rerun
+# ARCH_REPORT - Cycle 3 Rerun
 _Date: 2026-06-23_
 
 ## Overall Verdict
 
-PASS. The two prior Cycle 2 architecture drifts are addressed:
+PASS - T06 notification/message work is architecturally acceptable after the
+timezone fix. The prior Cycle 3 finding, `ARCH-1`, is closed. T07 Admin
+Authorization And Menus is unblocked from an architecture-review standpoint.
 
-- T05 now documents the caller-owned SQLAlchemy transaction boundary for booking service functions.
-- T06 now depends on both T04 and T05, so notification work is ordered after the booking details and slot-locking service it consumes.
+## Scope Reviewed
 
-No P0/P1/P2 architecture blockers remain for proceeding to T06.
+- `docs/audit/META_ANALYSIS.md`
+- `docs/ARCHITECTURE.md`
+- `docs/spec.md`
+- `docs/IMPLEMENTATION_CONTRACT.md`
+- Current notification, message, config, booking, model, and notification tests
 
 ## Component Verdicts
 
 | Component | Verdict | Note |
 |-----------|---------|------|
-| Booking service transaction boundary | PASS | The service module states that booking functions participate in a caller-owned SQLAlchemy transaction, lock the slot, add the booking, flush, and require callers to commit or roll back the session boundary. T05 repeats the same contract. Evidence: `app/services/booking.py:1`, `app/services/booking.py:3`, `app/services/booking.py:92`, `app/services/booking.py:94`, `docs/tasks.md:177`. |
-| Slot locking and double-booking prevention | PASS | The service selects the slot with `FOR UPDATE`, rejects blocked/past/already-booked slots, and the model enforces a non-null unique slot FK fallback. Evidence: `app/services/booking.py:121`, `app/services/booking.py:122`, `app/services/booking.py:124`, `app/services/booking.py:127`, `app/db/models.py:129`. |
-| Persistence invariants changed by T05 | PASS | `Booking.slot_id` is non-null and unique, the booking-to-slot relationship is required, and self-booking writes status history from draft to confirmed. Evidence: `app/db/models.py:129`, `app/db/models.py:153`, `app/services/booking.py:83`, `tests/test_models.py:138`. |
-| Simple booking business rules | PASS | Self-booking is limited to haircut, default duration is 60 minutes, default price is 90 GEL, and persisted details are copied from the locked slot. Evidence: `app/services/booking.py:20`, `app/services/booking.py:21`, `app/services/booking.py:22`, `app/services/booking.py:72`, `app/services/booking.py:79`. |
-| Available slot listing | PASS | Available slots are future, unblocked, and have no joined booking. Evidence: `app/services/booking.py:102`, `app/services/booking.py:112`, `app/services/booking.py:113`, `app/services/booking.py:114`. |
-| T06 handoff boundary | PASS | T06 notification templates/logging now depend on T04 and T05, matching the architecture flow where notification service consumes confirmed booking details produced by booking creation. Evidence: `docs/tasks.md:182`, `docs/tasks.md:187`, `docs/ARCHITECTURE.md:149`, `docs/ARCHITECTURE.md:150`. |
+| Message timezone handling | PASS | Message templates now use an explicit business timezone parameter with default `Asia/Tbilisi`, and aware datetimes are converted through `_as_timezone`. Evidence: `app/bot/messages.py:11`, `app/bot/messages.py:17`, `app/bot/messages.py:36`, `app/bot/messages.py:55`, `app/bot/messages.py:72`, `app/bot/messages.py:98`. |
+| Timezone regression coverage | PASS | Tests include a UTC-to-`Asia/Tbilisi` assertion proving `2026-06-24 06:00 UTC` renders as `10:00` local business time. Evidence: `tests/test_notifications.py:51`, `tests/test_notifications.py:52`, `tests/test_notifications.py:56`, `tests/test_notifications.py:59`, `tests/test_notifications.py:60`. |
+| Notification service | PASS | `send_client_notification` accepts a caller-owned `Session`, creates a `NotificationLog`, logs missing Telegram identity as `FAILED`, catches sender exceptions as `FAILED`, marks success as `SENT`, and flushes without committing. Evidence: `app/services/notifications.py:18`, `app/services/notifications.py:27`, `app/services/notifications.py:36`, `app/services/notifications.py:42`, `app/services/notifications.py:51`. |
+| Notification sender boundary | PASS | Telegram delivery remains behind a `NotificationSender` protocol, and tests use a fake sender rather than real Telegram sends. Evidence: `app/services/notifications.py:13`, `app/services/notifications.py:42`, `tests/test_notifications.py:26`. |
+| Message template field coverage | PASS | Confirmation, reschedule, cancellation, and admin new-booking messages expose required service/date/time/place/price or duration fields for current T06/T07 handoff needs. Evidence: `app/bot/messages.py:21`, `app/bot/messages.py:22`, `app/bot/messages.py:23`, `app/bot/messages.py:24`, `app/bot/messages.py:25`, `app/bot/messages.py:26`, `app/bot/messages.py:27`, `app/bot/messages.py:40`, `app/bot/messages.py:42`, `app/bot/messages.py:43`, `app/bot/messages.py:58`, `app/bot/messages.py:60`, `app/bot/messages.py:61`, `app/bot/messages.py:76`, `app/bot/messages.py:78`, `app/bot/messages.py:79`, `app/bot/messages.py:81`. |
+| Notification persistence model | PASS | `NotificationLog` links to booking/client and records kind, recipient, delivery status, error, sent timestamp, and created timestamp. Evidence: `app/db/models.py:186`, `app/db/models.py:190`, `app/db/models.py:191`, `app/db/models.py:192`, `app/db/models.py:193`, `app/db/models.py:194`, `app/db/models.py:199`, `app/db/models.py:200`, `app/db/models.py:201`. |
+| T07 handoff interaction | PASS | T07 can use the template and notification-service boundaries without expanding scope; admin authorization remains correctly isolated to T07. Evidence: `docs/tasks.md:215`, `docs/tasks.md:227`, `docs/tasks.md:234`, `app/services/notifications.py:18`. |
 
 ## Contract Compliance
 
 | Rule | Verdict | Note |
 |------|---------|------|
-| No secrets, credentials, `.env`, dumps, or real client data | PASS | Reviewed source/tests use synthetic values only. Evidence: `tests/test_booking_service.py:98`, `tests/test_models.py:48`, `tests/test_models.py:144`. |
-| Do not weaken tests, acceptance criteria, verification, or security boundaries | PASS | T05 adds targeted booking tests and model/session regressions. Evidence: `tests/test_booking_service.py:18`, `tests/test_booking_service.py:44`, `tests/test_models.py:138`, `tests/test_models.py:161`. |
-| Do not self-review meaningful implementation changes | N/A | This file is an architecture audit artifact requested after implementation fixes. |
-| Do not expand runtime, network, payment, external integration, or autonomous behavior | PASS | Current T05 scope remains deterministic SQLAlchemy service/model behavior only. Evidence: `app/services/booking.py:14`, `docs/ARCHITECTURE.md:103`, `docs/IMPLEMENTATION_CONTRACT.md:61`. |
-| Repository files are source of truth | PASS | Review used repository docs and current filesystem state. Evidence: `docs/audit/META_ANALYSIS.md:1`, `docs/tasks.md:146`, `app/services/booking.py:1`. |
-| Every task must run declared verification before completion | PASS | Cycle metadata records full local T05 verification passed; rerun audit also confirmed `python3 tools/integrity_check.py --root .` passes. Evidence: `docs/audit/META_ANALYSIS.md:6`. |
-| Booking integrity | PASS | Booking creation locks the slot transactionally, rejects unavailable slots, and has a DB uniqueness fallback for one booking per slot. Evidence: `docs/IMPLEMENTATION_CONTRACT.md:31`, `app/services/booking.py:121`, `app/services/booking.py:127`, `app/db/models.py:129`. |
-| Client notification integrity | PASS | T05 does not mutate confirmed bookings after confirmation; notification send/log behavior is T06 scope and now depends on T05. Evidence: `docs/tasks.md:182`, `docs/tasks.md:187`, `docs/tasks.md:193`, `docs/IMPLEMENTATION_CONTRACT.md:38`. |
-| Admin authorization | N/A | Current reviewed scope does not add admin handlers or privileged commands. Evidence: `docs/tasks.md:182`, `docs/tasks.md:212`. |
-| Financial calculations | N/A | Current reviewed scope does not add completion, expense, or revenue calculation behavior. Evidence: `docs/spec.md:97`. |
-| AI boundary | PASS | Booking decisions, pricing, and status history remain deterministic constants and ORM logic, with no LLM dependency. Evidence: `docs/IMPLEMENTATION_CONTRACT.md:61`, `app/services/booking.py:20`, `app/services/booking.py:22`, `app/services/booking.py:83`. |
-| Data classification / PII logging | PASS | Reviewed service code does not log Telegram IDs, usernames, display names, notes, or booking history. Evidence: `app/services/booking.py:64`, `app/services/booking.py:66`. |
-| Runtime and secrets | PASS | No runtime secret handling, network, package mutation, payments, or external integration changes were introduced. Evidence: `docs/IMPLEMENTATION_CONTRACT.md:80`, `app/services/booking.py:1`. |
-| External side effects through notification services; tests use fakes | PASS | T05 has no Telegram sender path; tests use local SQLite databases. Evidence: `tests/test_booking_service.py:19`, `tests/test_booking_service.py:45`. |
-| Auditability | PASS | Self-booked confirmed bookings create a status history record. Evidence: `app/services/booking.py:83`, `tests/test_booking_service.py:41`. |
-| Forbidden actions | PASS | Scoped code uses SQLAlchemy query construction and adds no interpolated SQL, payments, calendar sync, real Telegram sends, or AI behavior. Evidence: `app/services/booking.py:14`, `app/services/booking.py:108`, `app/services/booking.py:122`. |
-
-## ADR Compliance
-
-| ADR | Verdict | Note |
-|-----|---------|------|
-| No ADR files present | N/A | `docs/adr/` is absent, so there are no ADR decisions to verify. |
+| No secrets, credentials, `.env`, dumps, or real client data | PASS | Reviewed code/tests use synthetic Telegram IDs and in-memory SQLite only. Evidence: `tests/test_notifications.py:80`, `tests/test_notifications.py:123`. |
+| Do not weaken tests, acceptance criteria, verification, or security boundaries | PASS | T06 tests now include the timezone regression and existing notification delivery assertions remain intact. Evidence: `tests/test_notifications.py:37`, `tests/test_notifications.py:51`, `tests/test_notifications.py:63`, `tests/test_notifications.py:80`. |
+| Do not expand runtime, network, payment, external integration, or autonomous behavior | PASS | The patch remains deterministic template/service logic only; no AI, payments, calendar sync, or new integration surface was added. Evidence: `docs/ARCHITECTURE.md:103`, `app/bot/messages.py:14`, `app/services/notifications.py:13`. |
+| Booking integrity | N/A | This rerun did not review a booking mutation patch; booking locking remains T05-owned. Evidence: `docs/tasks.md:144`. |
+| Client notification integrity | PASS | Delivery success and failure are explicitly represented in `NotificationLog`; message appointment time now follows the business timezone contract. Evidence: `docs/IMPLEMENTATION_CONTRACT.md:36`, `app/services/notifications.py:36`, `app/services/notifications.py:45`, `app/services/notifications.py:48`, `app/bot/messages.py:98`. |
+| Admin authorization | N/A | Admin handler authorization is the next task, not part of T06. Evidence: `docs/tasks.md:215`, `docs/IMPLEMENTATION_CONTRACT.md:41`. |
+| Financial calculations | N/A | No finance/revenue behavior is touched by this rerun scope. Evidence: `docs/spec.md:93`. |
+| AI boundary | PASS | Messages and notifications are deterministic Python logic with no LLM dependency. Evidence: `docs/IMPLEMENTATION_CONTRACT.md:59`, `app/bot/messages.py:14`, `app/services/notifications.py:18`. |
+| Data classification / PII logging | PASS | Delivery errors are stored in database audit fields; reviewed code does not write Telegram IDs, usernames, display names, or booking details to application logs. Evidence: `app/services/notifications.py:31`, `app/services/notifications.py:46`, `docs/IMPLEMENTATION_CONTRACT.md:67`. |
+| External side effects through notification services; tests use fakes | PASS | Sender side effects are routed through `NotificationSender`; tests use `FakeSender`. Evidence: `docs/IMPLEMENTATION_CONTRACT.md:108`, `app/services/notifications.py:13`, `tests/test_notifications.py:26`. |
+| Auditability | PASS | Notification attempts are database records flushed in the caller-owned session. Evidence: `docs/IMPLEMENTATION_CONTRACT.md:110`, `app/services/notifications.py:27`, `app/services/notifications.py:51`. |
 
 ## Architecture Findings
 
 None.
 
-## Prior Finding Closure
+### Closed Finding
 
-| Finding | Prior Status | Rerun Status | Evidence |
-|---------|--------------|--------------|----------|
-| ARCH-1 - Booking Transaction Ownership Is Implicit | P2 DRIFT | CLOSED | `app/services/booking.py:3` documents caller-owned transaction participation; `docs/tasks.md:177` records the T05 transaction contract. |
-| ARCH-2 - T06 Dependency Omits T05 Booking Details | P2 DRIFT | CLOSED | `docs/tasks.md:187` now declares `Depends-On: T04 T05`. |
+`ARCH-1 [P2] - Client-Facing Appointment Times Are Forced To UTC`
 
-## Non-Blocking Notes
+Status: CLOSED.
 
-`create_simple_booking` uses a nested transaction/savepoint for the booking insert fallback and does not call `session.rollback()` internally. Callers still own the outer transaction and should treat `SlotUnavailableError` as a failed booking attempt within that unit of work. Evidence: `app/services/booking.py:73`, `app/services/booking.py:93`, `docs/tasks.md:177`.
+Resolution: `app/bot/messages.py` now defaults message rendering to
+`Asia/Tbilisi`, accepts explicit timezone injection, treats naive values as
+business-local, and converts aware datetimes into the selected timezone before
+date/time formatting. `tests/test_notifications.py` includes a UTC-to-business
+timezone regression.
 
-## Right-Sizing / Runtime Checks
+## Verification Notes
 
-| Check | Verdict | Note |
-|-------|---------|------|
-| Solution shape still appropriate | PASS | T05 remains a deterministic workflow application with SQLAlchemy persistence and no new runtime shape. Evidence: `docs/ARCHITECTURE.md:56`, `app/services/booking.py:1`. |
-| Deterministic-owned areas remain deterministic | PASS | Booking validation, pricing, and status history are normal Python/ORM logic and constants. Evidence: `docs/ARCHITECTURE.md:103`, `app/services/booking.py:20`, `app/services/booking.py:22`, `app/services/booking.py:83`. |
-| Runtime tier unchanged / justified | PASS | No code expands beyond the declared T1 app/database shape. Evidence: `docs/ARCHITECTURE.md:62`, `docs/ARCHITECTURE.md:81`. |
-| Human approval boundaries still valid | PASS | Current scope adds no cancellation/reschedule, admin manual booking, payment, external integration, new admin, deployment, or migration behavior. Evidence: `docs/ARCHITECTURE.md:92`, `docs/ARCHITECTURE.md:100`. |
-| Minimum viable control surface still proportionate | PASS | T05 strengthens transactional slot locking, status history, and one-booking-per-slot persistence without adding unnecessary governance. Evidence: `docs/ARCHITECTURE.md:72`, `app/services/booking.py:121`, `app/db/models.py:129`, `app/services/booking.py:83`. |
+Recorded post-fix verification passed: `ruff check`, `ruff format --check`,
+`pytest tests -q` with 18 passed, integrity check, and skill security gate.
 
-## Verification
+Local rerun during this architecture review:
 
-- `python3 tools/integrity_check.py --root .` passed during this rerun.
-- Full ruff/format/pytest/skill-gate verification was not rerun for this architecture-only audit; Cycle 2 metadata records that full T05 verification passed.
+- `python3 tools/integrity_check.py --root .` - PASS
+- `python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-scanner` - PASS
+
+Fresh local `ruff`/`pytest` rerun was not available in this shell because there
+is no project `.venv` present and system `python3` does not have `pytest`
+installed. This does not change the architecture verdict because the requested
+rerun was review-focused and the post-fix full verification is recorded as
+passing.
 
 ## Doc Patches Needed
 

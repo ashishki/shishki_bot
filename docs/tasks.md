@@ -185,6 +185,8 @@ Owner:      codex
 Phase:      2
 Type:       none
 Depends-On: T04 T05
+Status:     [x] complete
+Completed:  2026-06-23
 
 Objective: |
   Add reusable client/admin message templates and a notification service that

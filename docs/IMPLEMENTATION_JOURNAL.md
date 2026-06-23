@@ -108,3 +108,21 @@ Status: append-only
 - Evidence collected: Cycle 2 targeted review report; ruff check; ruff format --check; full pytest; integrity check; skill security gate.
 - Follow-ups: Proceed to T06 message templates and notification service.
 - Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 0.
+
+### 2026-06-23 - T06 - Message Templates And Notification Service
+
+- Scope: `app/bot/messages.py`, `app/services/notifications.py`, `tests/test_notifications.py`, `docs/CODEX_PROMPT.md`, `docs/tasks.md`, `docs/EVIDENCE_INDEX.md`
+- Why: Add deterministic notification copy and durable success/failure delivery logs.
+- Decisions applied: `D-002`
+- Evidence collected: notification tests passed; full pytest passed; ruff check; ruff format --check; integrity check; skill security gate.
+- Follow-ups: T07 must add admin allowlist checks and menus.
+- Notes: Tests use a fake sender and do not send Telegram messages.
+
+### 2026-06-23 - Cycle 3 - Targeted T06 Review
+
+- Scope: `docs/audit/META_ANALYSIS.md`, `docs/audit/ARCH_REPORT.md`, `docs/audit/REVIEW_REPORT.md`, `docs/archive/CYCLE3_T06_REVIEW.md`, T06 notification files.
+- Why: Notification delivery semantics touch a deep-review escalation boundary.
+- Decisions applied: `D-002`
+- Evidence collected: Cycle 3 targeted review report; ruff check; ruff format --check; full pytest; integrity check; skill security gate.
+- Follow-ups: Proceed to T07 admin authorization and menus.
+- Notes: Stop-Ship: No. P0: 0, P1: 0, P2: 0.
