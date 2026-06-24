@@ -15,6 +15,7 @@ from app.bot.handlers.client import (
     handle_active_booking_view,
     handle_client_callback_payload,
     handle_complex_service_redirect,
+    handle_consultation_redirect,
     handle_haircut_booking_confirmation,
     handle_haircut_booking_start,
     handle_haircut_date_selection,
@@ -41,15 +42,22 @@ def test_start_menu() -> None:
     assert "Стрижка" in response.text
     assert "60 мин" in response.text
     assert "90 GEL" in response.text
+    assert "Выберите услугу" in response.text
     assert tuple(button.action for button in response.buttons) == client_menu_actions()
     assert tuple(button.action for button in response.buttons) == (
         ClientMenuAction.BOOK_HAIRCUT,
         ClientMenuAction.COMPLEX_SERVICE,
+        ClientMenuAction.CONSULTATION,
         ClientMenuAction.ABOUT_MASTER,
         ClientMenuAction.REFERRAL_PROGRAM,
         ClientMenuAction.MY_BOOKING,
         ClientMenuAction.RESCHEDULE_CANCEL,
         ClientMenuAction.CONTACT,
+    )
+    assert tuple(button.label for button in response.buttons[:3]) == (
+        "Стрижка",
+        "Окрашивание",
+        "Консультация",
     )
     assert handle_unknown_input(_settings()) == response
 
@@ -193,6 +201,7 @@ def test_client_callback_requires_confirmation_before_booking() -> None:
             ClientMenuAction.SELECT_HAIRCUT_DATE,
             ClientMenuAction.MY_BOOKING,
         )
+        assert date_list.text == HAIRCUT_DATE_LIST_TEXT
         assert session.scalar(select(Booking)) is None
 
         slot_list = handle_client_callback_payload(
@@ -245,6 +254,45 @@ def test_client_callback_requires_confirmation_before_booking() -> None:
 
     assert booking is not None
     assert booking.status is BookingStatus.CONFIRMED
+
+
+def test_client_cannot_book_more_than_two_haircuts_same_day() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    settings = _settings()
+    now = datetime(2026, 6, 24, 8, 0, tzinfo=UTC)
+
+    with Session(engine, expire_on_commit=False) as session:
+        user = User(telegram_id=555, display_name="Test Client")
+        client = Client(user=user, display_name="Test Client")
+        first_slot = _create_slot(session, starts_at=now + timedelta(days=1, hours=1))
+        second_slot = _create_slot(session, starts_at=now + timedelta(days=1, hours=2))
+        third_slot = _create_slot(session, starts_at=now + timedelta(days=1, hours=3))
+        session.add(_booking(client, first_slot, first_slot.starts_at))
+        session.add(_booking(client, second_slot, second_slot.starts_at))
+        session.commit()
+
+        response = handle_client_callback_payload(
+            session,
+            settings,
+            callback_payload=client_callback_data(
+                ClientMenuAction.CONFIRM_HAIRCUT,
+                third_slot.id,
+            ),
+            telegram_user_id=555,
+            now=now,
+        )
+        session.rollback()
+
+        bookings = session.scalars(select(Booking)).all()
+
+    assert "максимум 2 активные записи" in response.text
+    assert not response.should_commit
+    assert tuple(button.action for button in response.buttons) == (
+        ClientMenuAction.BOOK_HAIRCUT,
+        ClientMenuAction.CONTACT,
+    )
+    assert len(bookings) == 2
 
 
 @pytest.mark.asyncio
@@ -518,10 +566,30 @@ def test_complex_service_redirect() -> None:
 
     assert before == []
     assert after == []
-    assert "консультации" in response.text
-    assert "консультации" in callback_response.text
+    assert "Окрашивание требует консультации" in response.text
+    assert "Окрашивание требует консультации" in callback_response.text
     assert "https://t.me/test_stylist" in response.text
-    assert "вручную" in response.text
+    assert "сам внесу запись" in response.text
+
+
+def test_consultation_redirect() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        response = handle_consultation_redirect(_settings())
+        callback_response = handle_client_callback_payload(
+            session,
+            _settings(),
+            callback_payload=client_callback_data(ClientMenuAction.CONSULTATION),
+            telegram_user_id=555,
+        )
+        bookings = session.scalars(select(Booking)).all()
+
+    assert bookings == []
+    assert "Для консультации" in response.text
+    assert "Для консультации" in callback_response.text
+    assert "https://t.me/test_stylist" in callback_response.text
 
 
 def _settings() -> Settings:

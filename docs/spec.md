@@ -19,15 +19,17 @@ change notifications, and lightweight business statistics.
 
 ## Feature 1 - Client Main Menu
 
-Description: The client receives a clear Telegram menu with actions for booking,
-viewing a booking, reschedule/cancel instructions, complex service contact, and
-stylist contact.
+Description: The client receives a clear Telegram menu with service choices,
+booking management, stylist information, referral link access, and contact
+paths.
 
 Acceptance criteria:
 
 1. Client can open `/start` and see concise welcome text plus buttons.
-2. Welcome text states haircut duration, haircut price, and complex-service rule.
-3. Menu includes booking, complex service, my booking, reschedule/cancel, and contact options.
+2. Welcome text states haircut duration, haircut price, and that coloring and
+   consultation continue through personal chat.
+3. Menu includes haircut, coloring, consultation, about master, referrals, my
+   booking, reschedule/cancel, and contact options.
 4. Unknown input returns the main menu without creating a booking.
 
 Out of scope for v1: multilingual copy and rich media onboarding.
@@ -44,20 +46,23 @@ Acceptance criteria:
 4. Slot cannot be double-booked under concurrent attempts.
 5. Client receives confirmation with service, date, time, place, duration, price, and change/cancel instructions.
 6. Stylist admin receives a new-booking notification.
+7. One Telegram client cannot hold more than 2 active haircut bookings on the
+   same date.
 
 Out of scope for v1: online payment and automatic deposits.
 
 ## Feature 3 - Complex Service Redirect and Manual Booking
 
-Description: Coloring and complex services require personal consultation, then
-admin manual booking.
+Description: Coloring and consultations require personal chat. Coloring can then
+be created manually by admin once duration and complexity are clear.
 
 Acceptance criteria:
 
-1. Client choosing coloring/complex service receives consultation copy and stylist contact link.
+1. Client choosing coloring receives consultation copy and stylist contact link.
 2. Client cannot self-book coloring directly.
-3. Admin can create a manual booking with custom service, duration, date/time, price, place, and notes.
-4. Admin can send client a confirmation for a manual booking when the client has a Telegram identity.
+3. Client choosing consultation receives stylist contact link without creating a booking.
+4. Admin can create a manual booking with custom service, duration, date/time, price, place, and notes.
+5. Admin can send client a confirmation for a manual booking when the client has a Telegram identity.
 
 Out of scope for v1: AI price/time estimation from photos or descriptions.
 

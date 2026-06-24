@@ -279,3 +279,12 @@ Status: append-only
 - Evidence collected: ruff check; ruff format --check; full pytest passed with 73 tests; integrity check; skill security gate.
 - Follow-ups: Monitor the first live referral deep-link flow and the first pending bonus notification in systemd logs.
 - Notes: Schema change is additive only: `referral_codes`, `referrals`, and `referral_bonuses`. Fresh backup is required before applying `create_all` to an existing live database; rollback is app rollback plus optional explicit dropping of the new referral tables if referral data can be discarded.
+
+### 2026-06-24 - T15 - Client Service Menu And Booking Guard
+
+- Scope: `app/bot/keyboards.py`, `app/bot/handlers/client.py`, `tests/test_client_handlers.py`, and client-flow docs.
+- Why: Clients need to choose between haircut, coloring, and consultation before booking, and the stylist needs basic protection from one client holding many same-day haircut slots.
+- Decisions applied: `D-002`, `D-003`, `D-004`
+- Evidence collected: ruff check; ruff format --check; full pytest passed with 75 tests; integrity check; skill security gate.
+- Follow-ups: Consider stronger anti-abuse controls after live testing, such as total active booking limits, cooldown after repeated cancellations, admin approval for suspicious users, or deposits for new clients.
+- Notes: No schema change. The guard blocks more than 2 active self-booked haircuts on one business date for a Telegram client; admin manual bookings remain operator-controlled.

@@ -30,8 +30,10 @@ from app.bot.messages import (
 from app.config import Settings
 from app.db.models import Booking, BookingStatus, Client, Slot, User
 from app.services.booking import (
+    ACTIVE_BOOKING_STATUSES,
     DEFAULT_HAIRCUT_DURATION_MINUTES,
     DEFAULT_HAIRCUT_PRICE,
+    HAIRCUT_SERVICE,
     SlotUnavailableError,
     cancel_booking_by_client,
     create_haircut_booking,
@@ -54,7 +56,8 @@ CLIENT_WELCOME_TEXT = "\n".join(
     [
         "SHISHKI",
         f"Стрижка: {DEFAULT_HAIRCUT_DURATION_MINUTES} мин, {HAIRCUT_PRICE_LABEL} GEL.",
-        "Выберите удобную дату ниже.",
+        "Окрашивание и консультация — через личный чат.",
+        "Выберите услугу.",
     ]
 )
 NO_AVAILABLE_SLOTS_TEXT = "Свободных дат пока нет."
@@ -65,6 +68,10 @@ NO_ACTIVE_BOOKING_TEXT = "У вас пока нет активной запис�
 CHANGE_BOOKING_DATE_TEXT = "Выберите новую дату."
 CANCEL_BOOKING_CONFIRM_TEXT = "Точно отменить эту запись?"
 SLOT_UNAVAILABLE_TEXT = "Это время уже недоступно. Выберите другое."
+HAIRCUT_DAILY_LIMIT_TEXT = (
+    "На одну дату можно держать максимум 2 активные записи на стрижку. "
+    "Если нужно больше времени подряд или особый формат, напишите мне."
+)
 IDENTITY_REQUIRED_TEXT = "Не удалось определить ваш Telegram-профиль."
 UNKNOWN_ACTION_TEXT = "Неизвестное действие."
 BOOKING_UNAVAILABLE_TEXT = "Запись временно недоступна."
@@ -74,6 +81,7 @@ REFERRAL_LINK_UNAVAILABLE_TEXT = (
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ABOUT_MASTER_TEXT_PATH = PROJECT_ROOT / "about_me.md"
 ABOUT_MASTER_PHOTO_PATH = PROJECT_ROOT / "IMG_9385.PNG"
+MAX_ACTIVE_HAIRCUT_BOOKINGS_PER_DAY = 2
 
 
 class ClientIdentityRequired(ValueError):
@@ -82,6 +90,10 @@ class ClientIdentityRequired(ValueError):
 
 class ClientActiveBookingRequired(ValueError):
     """Raised when a client action requires an active booking."""
+
+
+class ClientDailyBookingLimitExceeded(ValueError):
+    """Raised when a client tries to overbook one business day."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -218,6 +230,7 @@ def handle_haircut_booking_confirmation(
     slot_id: int,
     display_name: str | None = None,
     username: str | None = None,
+    now: datetime | None = None,
 ) -> ClientBookingResponse:
     if telegram_user_id is None:
         raise ClientIdentityRequired("Telegram user identity is required")
@@ -227,6 +240,13 @@ def handle_haircut_booking_confirmation(
         telegram_user_id=telegram_user_id,
         display_name=display_name,
         username=username,
+    )
+    _ensure_haircut_daily_limit(
+        session,
+        settings,
+        client_id=client.id,
+        slot_id=slot_id,
+        now=now,
     )
     booking = create_haircut_booking(session, client_id=client.id, slot_id=slot_id)
     return ClientBookingResponse(
@@ -311,7 +331,7 @@ def handle_start_payload(
         )
         referral_registered = registration.registered
 
-    response = handle_haircut_booking_start(session, settings, now=now)
+    response = handle_start_command(settings)
     text = response.text
     if referral_registered:
         text = "Рекомендация сохранена.\n\n" + text
@@ -397,6 +417,10 @@ def handle_client_callback_payload(
         response = handle_complex_service_redirect(settings)
         return ClientCallbackResponse(text=response.text)
 
+    if parsed.action == ClientMenuAction.CONSULTATION:
+        response = handle_consultation_redirect(settings)
+        return ClientCallbackResponse(text=response.text)
+
     if parsed.action == ClientMenuAction.ABOUT_MASTER:
         response = handle_about_master_request()
         return ClientCallbackResponse(text=response.text, buttons=response.buttons)
@@ -427,16 +451,8 @@ def handle_client_callback_payload(
         )
 
     if parsed.action == ClientMenuAction.BOOK_HAIRCUT:
-        response = handle_start_payload(
-            session,
-            settings,
-            telegram_user_id=telegram_user_id,
-            display_name=display_name,
-            username=username,
-            start_payload=start_payload,
-            now=now,
-        )
-        return response
+        response = handle_haircut_booking_start(session, settings, now=now)
+        return ClientCallbackResponse(text=response.text, buttons=response.buttons)
 
     if parsed.action in (
         ClientMenuAction.MY_BOOKING,
@@ -615,11 +631,17 @@ def handle_client_callback_payload(
                 slot_id=slot_id,
                 display_name=display_name,
                 username=username,
+                now=now,
             )
         except SlotUnavailableError:
             return ClientCallbackResponse(text=SLOT_UNAVAILABLE_TEXT)
         except ClientIdentityRequired:
             return ClientCallbackResponse(text=IDENTITY_REQUIRED_TEXT)
+        except ClientDailyBookingLimitExceeded:
+            return ClientCallbackResponse(
+                text=HAIRCUT_DAILY_LIMIT_TEXT,
+                buttons=(_dates_button(), _contact_button()),
+            )
         except ValueError:
             return ClientCallbackResponse(text=UNKNOWN_ACTION_TEXT)
         return ClientCallbackResponse(
@@ -636,9 +658,20 @@ def handle_complex_service_redirect(settings: Settings) -> ClientTextResponse:
     return ClientTextResponse(
         text="\n".join(
             [
-                "Окрашивание и сложные услуги требуют консультации.",
-                f"Напишите стилисту: {contact}",
-                "После консультации запись будет создана вручную.",
+                "Окрашивание требует консультации.",
+                f"Напишите мне в чат: {contact}",
+                "Я уточню длительность, сложность и сам внесу запись.",
+            ]
+        )
+    )
+
+
+def handle_consultation_redirect(settings: Settings) -> ClientTextResponse:
+    return ClientTextResponse(
+        text="\n".join(
+            [
+                "Для консультации напишите мне в чат.",
+                _contact_target(settings),
             ]
         )
     )
@@ -947,12 +980,10 @@ def build_client_router(
             return
 
         start_payload = _start_payload(message.text)
-        response = await _dispatch_payload(
-            callback_payload=client_callback_data(ClientMenuAction.BOOK_HAIRCUT),
+        response = await _dispatch_start_payload(
             telegram_user_id=message.from_user.id if message.from_user else None,
             display_name=message.from_user.full_name if message.from_user else None,
             username=message.from_user.username if message.from_user else None,
-            bot_username=await _bot_username(message.bot),
             start_payload=start_payload,
         )
         await message.answer(
@@ -1008,6 +1039,34 @@ def build_client_router(
             return None
         resolved_bot_username = me.username
         return resolved_bot_username
+
+    async def _dispatch_start_payload(**kwargs: object) -> ClientCallbackResponse:
+        if async_session_factory is not None:
+            async with async_session_factory() as async_session:
+                response = await async_session.run_sync(
+                    lambda sync_session: handle_start_payload(
+                        sync_session,
+                        settings,
+                        **kwargs,
+                    )
+                )
+                if response.should_commit:
+                    await async_session.commit()
+                else:
+                    await async_session.rollback()
+                return response
+
+        if session_factory is not None:
+            with session_factory() as session:
+                response = handle_start_payload(session, settings, **kwargs)
+                if response.should_commit:
+                    session.commit()
+                else:
+                    session.rollback()
+                return response
+
+        response = handle_start_command(settings)
+        return ClientCallbackResponse(text=response.text, buttons=response.buttons)
 
     async def _dispatch_payload(**kwargs: object) -> ClientCallbackResponse:
         if async_session_factory is not None:
@@ -1246,10 +1305,21 @@ def _slot_local_date(slot: Slot, settings: Settings) -> date:
 
 
 def _slot_local_start(slot: Slot, settings: Settings) -> datetime:
-    starts_at = slot.starts_at
-    if starts_at.tzinfo is None:
-        starts_at = starts_at.replace(tzinfo=settings.timezone_info)
-    return starts_at.astimezone(settings.timezone_info)
+    return _datetime_local(slot.starts_at, settings)
+
+
+def _booking_local_date(booking: Booking, settings: Settings) -> date:
+    return _booking_local_start(booking, settings).date()
+
+
+def _booking_local_start(booking: Booking, settings: Settings) -> datetime:
+    return _datetime_local(booking.starts_at, settings)
+
+
+def _datetime_local(value: datetime, settings: Settings) -> datetime:
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=settings.timezone_info)
+    return value.astimezone(settings.timezone_info)
 
 
 def _contact_target(settings: Settings) -> str:
@@ -1280,6 +1350,39 @@ def _about_master_text() -> str:
 
 def _html_caption(text: str) -> str:
     return escape(text, quote=False)
+
+
+def _ensure_haircut_daily_limit(
+    session: Session,
+    settings: Settings,
+    *,
+    client_id: int,
+    slot_id: int,
+    now: datetime | None = None,
+) -> None:
+    slot = session.get(Slot, slot_id)
+    if slot is None:
+        raise SlotUnavailableError(f"Slot is unavailable: {slot_id}")
+
+    target_date = _slot_local_date(slot, settings)
+    cutoff = _datetime_local(now or datetime.now(UTC), settings)
+    active_haircuts = tuple(
+        session.scalars(
+            select(Booking).where(
+                Booking.client_id == client_id,
+                Booking.service == HAIRCUT_SERVICE,
+                Booking.status.in_(ACTIVE_BOOKING_STATUSES),
+            )
+        )
+    )
+    same_day_count = sum(
+        1
+        for booking in active_haircuts
+        if _booking_local_date(booking, settings) == target_date
+        and _booking_local_start(booking, settings) > cutoff
+    )
+    if same_day_count >= MAX_ACTIVE_HAIRCUT_BOOKINGS_PER_DAY:
+        raise ClientDailyBookingLimitExceeded("client haircut daily limit exceeded")
 
 
 def _active_booking_for_user(

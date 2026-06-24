@@ -5,9 +5,10 @@ bot for one stylist.
 
 ## Current Status
 
-- Phase 5 is complete. T14 is complete: clients can get personal referral
-  links, referrals are qualified after completed visits, and admins see pending
-  cosmetics/styling bonuses.
+- Phase 5 is complete. T15 is complete: clients choose haircut, coloring, or
+  consultation first; haircut leads to date/time slots, coloring and
+  consultation route to stylist chat, and same-day haircut self-booking is
+  capped per client.
 - Next task: none in the current task graph.
 - Cycle 9 T13 deployment/operator review findings were closed.
 - Production v1 remains deterministic: no production LLM behavior or external

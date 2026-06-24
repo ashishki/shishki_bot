@@ -8,10 +8,10 @@ Phase: 5
 ## Current State
 
 - Phase: 5
-- Baseline: T14 complete; task graph complete with 73 total tests.
+- Baseline: T15 complete; task graph complete with 75 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-24 - ruff check, ruff format --check, pytest `tests -q` (73 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-24 - ruff check, ruff format --check, pytest `tests -q` (75 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,7 +29,7 @@ Phase: 5
 
 ## Next Task
 
-none - implementation task graph complete through T14.
+none - implementation task graph complete through T15.
 
 For future changes, read:
 
@@ -147,6 +147,11 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   referral links, deep-link source capture, completed-visit qualification,
   admin client-card progress, pending cosmetics/styling bonuses, awarded-state
   handling, and one-time admin bonus reminders.
+- 2026-06-24 - T15 Client Service Menu And Booking Guard: changed `/start` to
+  show explicit service choices for haircut, coloring, and consultation; kept
+  haircut date/slot booking behind the haircut button; routed coloring and
+  consultation to stylist chat; and added a 2-active-haircuts-per-day client
+  guard.
 
 ## Completed Bootstrap Work
 
@@ -169,6 +174,10 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   `/start ref_<code>`, qualified after completed visits, and every 3 qualified
   referrals creates a pending professional hair cosmetics/styling bonus for
   admin follow-up.
+- Client start menu now asks for service selection: `Стрижка` leads to dates
+  and slots, while `Окрашивание` and `Консультация` route to stylist chat.
+  One Telegram client cannot hold more than 2 active haircut bookings on the
+  same date through self-booking.
 
 ## Instructions For Codex
 

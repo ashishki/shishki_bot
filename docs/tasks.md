@@ -488,3 +488,42 @@ Context-Refs:
   - docs/spec.md#feature-9---referral-program
   - docs/IMPLEMENTATION_CONTRACT.md#admin-authorization
   - docs/IMPLEMENTATION_CONTRACT.md#financial-calculations
+
+## T15: Client Service Menu And Booking Guard
+
+Owner:      codex
+Phase:      5
+Type:       none
+Depends-On: T08 T14
+Status:     [x] complete
+Completed:  2026-06-24
+
+Objective: |
+  Make the client entry flow choose between haircut, coloring, and consultation,
+  and protect haircut self-booking from one client holding too many slots on
+  the same day.
+
+Acceptance-Criteria:
+  - id: AC-1
+    description: "Client start menu exposes haircut, coloring, and consultation service choices."
+    test: "tests/test_client_handlers.py::test_start_menu"
+  - id: AC-2
+    description: "Haircut service leads to date and slot selection."
+    test: "tests/test_client_handlers.py::test_client_callback_requires_confirmation_before_booking"
+  - id: AC-3
+    description: "Coloring and consultation redirect to stylist chat without creating bookings."
+    test: "tests/test_client_handlers.py::test_complex_service_redirect and tests/test_client_handlers.py::test_consultation_redirect"
+  - id: AC-4
+    description: "One Telegram client cannot book more than 2 active haircuts on one date."
+    test: "tests/test_client_handlers.py::test_client_cannot_book_more_than_two_haircuts_same_day"
+
+Files:
+  - app/bot/keyboards.py
+  - app/bot/handlers/client.py
+  - tests/test_client_handlers.py
+
+Context-Refs:
+  - docs/spec.md#feature-1---client-main-menu
+  - docs/spec.md#feature-2---simple-haircut-booking
+  - docs/spec.md#feature-3---complex-service-redirect-and-manual-booking
+  - docs/IMPLEMENTATION_CONTRACT.md#booking-integrity

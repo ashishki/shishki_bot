@@ -9,8 +9,7 @@ from app.bot.handlers.admin import (
     handle_admin_mark_referral_bonus_awarded,
     handle_admin_referral_bonuses,
 )
-from app.bot.handlers.client import handle_client_callback_payload
-from app.bot.keyboards import ClientMenuAction, client_callback_data
+from app.bot.handlers.client import handle_start_payload
 from app.config import Settings
 from app.db.models import (
     Base,
@@ -133,10 +132,9 @@ def test_client_start_payload_records_referral_before_booking() -> None:
         _create_slot(session, starts_at=now + timedelta(days=1))
         session.commit()
 
-        response = handle_client_callback_payload(
+        response = handle_start_payload(
             session,
             _settings(),
-            callback_payload=client_callback_data(ClientMenuAction.BOOK_HAIRCUT),
             telegram_user_id=777,
             display_name="New Client",
             username="new_client",
