@@ -23,6 +23,7 @@ from app.bot.keyboards import (
 )
 from app.bot.messages import (
     booking_cancelled_message,
+    booking_confirmation_message,
     booking_rescheduled_message,
     booking_updated_message,
 )
@@ -38,6 +39,8 @@ from app.db.models import (
     User,
 )
 from app.services.booking import (
+    BookingServiceError,
+    SlotUnavailableError,
     cancel_booking_by_admin,
     create_manual_booking,
     list_available_slots,
@@ -68,6 +71,17 @@ NO_BOOKINGS_TEXT = "На эту дату записей пока нет."
 BOOKING_NOT_FOUND_TEXT = "Запись не найдена."
 NO_AVAILABLE_SLOTS_TEXT = "Свободных слотов пока нет."
 NO_REFERRAL_BONUSES_TEXT = "Бонусов к выдаче пока нет."
+MANUAL_BOOKING_HELP_TEXT = "\n".join(
+    [
+        "Создать ручную запись:",
+        "/book <client_id> <YYYY-MM-DD> <HH:MM> <минуты> <цена> <услуга>",
+        "",
+        "Пример:",
+        "/book 3 2026-06-28 15:00 180 250 Окрашивание",
+        "",
+        "client_id берется из «Клиенты» -> карточка клиента.",
+    ]
+)
 
 
 class AdminAccessDenied(PermissionError):
@@ -123,6 +137,15 @@ class AdminNotificationAttempt:
     recipient_telegram_id: int | None
     kind: str
     text: str
+
+
+@dataclass(frozen=True, slots=True)
+class ManualBookingCommand:
+    client_id: int
+    starts_at: datetime
+    duration_minutes: int
+    price_amount: Decimal
+    service: str
 
 
 def is_admin_user(telegram_user_id: int | None, settings: Settings) -> bool:
@@ -195,6 +218,50 @@ def handle_admin_manual_booking(
         notes=notes,
     )
     return AdminBookingMutationResponse(booking=booking)
+
+
+def handle_admin_manual_booking_command(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    command_text: str | None,
+) -> AdminNotificationAttempt:
+    require_admin_user(telegram_user_id, settings)
+    command = _parse_manual_booking_command(command_text, settings)
+    slot = _get_or_create_manual_slot(
+        session,
+        settings,
+        starts_at=command.starts_at,
+    )
+    booking = create_manual_booking(
+        session,
+        client_id=command.client_id,
+        slot_id=slot.id,
+        service=command.service,
+        duration_minutes=command.duration_minutes,
+        price_amount=command.price_amount,
+    )
+    text = booking_confirmation_message(
+        booking,
+        timezone=settings.timezone_info,
+        **_settings_location_links(settings),
+    )
+    return AdminNotificationAttempt(
+        response=AdminRuntimeResponse(
+            text="Запись создана\n" + _booking_line(booking, settings),
+            buttons=(
+                _booking_detail_button(booking, settings),
+                _schedule_date_button(_booking_local_date(booking, settings)),
+                _admin_menu_button(),
+            ),
+        ),
+        booking_id=booking.id,
+        client_id=booking.client_id,
+        recipient_telegram_id=_recipient_telegram_id(booking),
+        kind="booking_confirmation",
+        text=text,
+    )
 
 
 def handle_admin_reschedule_booking(
@@ -867,6 +934,44 @@ def build_admin_router(
             parse_mode="HTML",
         )
 
+    @router.message(Command("book"))
+    async def manual_booking(message: Message) -> None:
+        telegram_user_id = message.from_user.id if message.from_user else None
+        if async_session_factory is None:
+            await message.answer(MANUAL_BOOKING_HELP_TEXT)
+            return
+
+        async with async_session_factory() as async_session:
+            try:
+                attempt = await async_session.run_sync(
+                    lambda session: handle_admin_manual_booking_command(
+                        session,
+                        settings,
+                        telegram_user_id=telegram_user_id,
+                        command_text=message.text,
+                    )
+                )
+            except AdminAccessDenied:
+                await async_session.rollback()
+                await message.answer(ADMIN_ACCESS_DENIED_TEXT)
+                return
+            except (BookingServiceError, SlotUnavailableError, ValueError) as exc:
+                await async_session.rollback()
+                await message.answer(
+                    f"{_html(exc)}\n\n{MANUAL_BOOKING_HELP_TEXT}",
+                    parse_mode="HTML",
+                )
+                return
+
+            await _send_and_log_admin_notification(async_session, message.bot, attempt)
+            await async_session.commit()
+
+        await message.answer(
+            attempt.response.text,
+            reply_markup=_runtime_keyboard(attempt.response.buttons),
+            parse_mode="HTML",
+        )
+
     @router.callback_query(F.data.startswith(f"{ADMIN_CALLBACK_PREFIX}:"))
     async def admin_callback(callback: CallbackQuery) -> None:
         telegram_user_id = callback.from_user.id if callback.from_user else None
@@ -997,6 +1102,12 @@ def build_admin_router(
                 )
                 await async_session.commit()
                 return response
+        if action is AdminMenuAction.MANUAL_BOOKING:
+            require_admin_user(telegram_user_id, settings)
+            return AdminRuntimeResponse(
+                text=MANUAL_BOOKING_HELP_TEXT,
+                buttons=(_admin_menu_button(),),
+            )
         if (
             async_session_factory is not None
             and action is AdminMenuAction.RESCHEDULE_DATE
@@ -1142,6 +1253,79 @@ def _settings_location_links(settings: Settings) -> dict[str, str | None]:
         "google_map_url": settings.google_map_url,
         "default_map_url": settings.default_map_url,
     }
+
+
+def _parse_manual_booking_command(
+    command_text: str | None,
+    settings: Settings,
+) -> ManualBookingCommand:
+    parts = (command_text or "").strip().split(maxsplit=6)
+    if len(parts) != 7 or not parts[0].startswith("/book"):
+        raise ValueError("Неверный формат команды.")
+
+    try:
+        client_id = int(parts[1])
+        selected_date = date.fromisoformat(parts[2])
+        hour, minute = (int(value) for value in parts[3].split(":", maxsplit=1))
+        starts_at = datetime(
+            selected_date.year,
+            selected_date.month,
+            selected_date.day,
+            hour,
+            minute,
+        )
+        duration_minutes = int(parts[4])
+        price_amount = Decimal(parts[5].replace(",", "."))
+    except (ArithmeticError, TypeError, ValueError) as exc:
+        raise ValueError(
+            "Не удалось разобрать дату, время, длительность или цену."
+        ) from exc
+
+    service = parts[6].strip()
+    if not service:
+        raise ValueError("Укажите услугу.")
+    if duration_minutes <= 0:
+        raise ValueError("Длительность должна быть больше 0 минут.")
+    if price_amount < 0:
+        raise ValueError("Цена не может быть отрицательной.")
+
+    now_local = datetime.now(settings.timezone_info).replace(tzinfo=None)
+    if starts_at <= now_local:
+        raise ValueError("Нельзя создать запись в прошлом.")
+
+    return ManualBookingCommand(
+        client_id=client_id,
+        starts_at=starts_at,
+        duration_minutes=duration_minutes,
+        price_amount=price_amount,
+        service=service,
+    )
+
+
+def _get_or_create_manual_slot(
+    session: Session,
+    settings: Settings,
+    *,
+    starts_at: datetime,
+) -> Slot:
+    slot = session.scalar(
+        select(Slot).where(
+            Slot.starts_at == starts_at,
+            Slot.place == settings.default_place,
+        )
+    )
+    if slot is not None:
+        return slot
+
+    slot = Slot(
+        starts_at=starts_at,
+        ends_at=starts_at + timedelta(hours=1),
+        place=settings.default_place,
+        is_blocked=False,
+    )
+    session.add(slot)
+    session.flush()
+    return slot
 
 
 def _parse_admin_runtime_payload(

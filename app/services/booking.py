@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -62,6 +62,7 @@ def create_manual_booking(
     slot = _lock_available_slot(session, slot_id)
     starts_at = _as_utc(slot.starts_at)
     ends_at = starts_at + timedelta(minutes=duration_minutes)
+    _ensure_no_active_booking_overlap(session, starts_at=starts_at, ends_at=ends_at)
 
     booking: Booking | None = None
     try:
@@ -130,6 +131,7 @@ def create_simple_booking(
     slot = _lock_available_slot(session, slot_id)
     starts_at = _as_utc(slot.starts_at)
     ends_at = starts_at + timedelta(minutes=DEFAULT_HAIRCUT_DURATION_MINUTES)
+    _ensure_no_active_booking_overlap(session, starts_at=starts_at, ends_at=ends_at)
 
     booking: Booking | None = None
     try:
@@ -330,19 +332,21 @@ def list_available_slots(
     now: datetime | None = None,
 ) -> list[Slot]:
     cutoff = now or datetime.now(UTC)
+    active_overlap = (
+        select(Booking.id)
+        .where(
+            Booking.status.in_(ACTIVE_BOOKING_STATUSES),
+            Booking.starts_at < Slot.ends_at,
+            Booking.ends_at > Slot.starts_at,
+        )
+        .exists()
+    )
     statement = (
         select(Slot)
-        .outerjoin(
-            Booking,
-            and_(
-                Booking.slot_id == Slot.id,
-                Booking.status.in_(ACTIVE_BOOKING_STATUSES),
-            ),
-        )
         .where(
             Slot.is_blocked.is_(False),
             Slot.starts_at > cutoff,
-            Booking.id.is_(None),
+            ~active_overlap,
         )
         .order_by(Slot.starts_at)
     )
@@ -355,16 +359,46 @@ def _lock_available_slot(session: Session, slot_id: int) -> Slot:
     if slot is None or slot.is_blocked or _as_utc(slot.starts_at) <= datetime.now(UTC):
         raise SlotUnavailableError(f"Slot is unavailable: {slot_id}")
 
-    existing_booking = session.scalar(
-        select(Booking.id).where(
-            Booking.slot_id == slot.id,
-            Booking.status.in_(ACTIVE_BOOKING_STATUSES),
-        )
+    existing_booking = _active_booking_overlap_id(
+        session,
+        starts_at=slot.starts_at,
+        ends_at=slot.ends_at,
     )
     if existing_booking is not None:
         raise SlotUnavailableError(f"Slot is already booked: {slot_id}")
 
     return slot
+
+
+def _ensure_no_active_booking_overlap(
+    session: Session,
+    *,
+    starts_at: datetime,
+    ends_at: datetime,
+) -> None:
+    existing_booking = _active_booking_overlap_id(
+        session,
+        starts_at=starts_at,
+        ends_at=ends_at,
+    )
+    if existing_booking is not None:
+        raise SlotUnavailableError("Booking overlaps an active booking")
+
+
+def _active_booking_overlap_id(
+    session: Session,
+    *,
+    starts_at: datetime,
+    ends_at: datetime,
+) -> int | None:
+    with session.no_autoflush:
+        return session.scalar(
+            select(Booking.id).where(
+                Booking.status.in_(ACTIVE_BOOKING_STATUSES),
+                Booking.starts_at < ends_at,
+                Booking.ends_at > starts_at,
+            )
+        )
 
 
 def _get_booking(session: Session, booking_id: int) -> Booking:

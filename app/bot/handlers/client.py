@@ -446,11 +446,29 @@ def handle_client_callback_payload(
 
     if parsed.action == ClientMenuAction.COMPLEX_SERVICE:
         response = handle_complex_service_redirect(settings)
-        return ClientCallbackResponse(text=response.text, buttons=response.buttons)
+        return ClientCallbackResponse(
+            text=response.text,
+            buttons=response.buttons,
+            should_commit=_ensure_client_record_for_contact(
+                session,
+                telegram_user_id=telegram_user_id,
+                display_name=display_name,
+                username=username,
+            ),
+        )
 
     if parsed.action == ClientMenuAction.CONSULTATION:
         response = handle_consultation_redirect(settings)
-        return ClientCallbackResponse(text=response.text, buttons=response.buttons)
+        return ClientCallbackResponse(
+            text=response.text,
+            buttons=response.buttons,
+            should_commit=_ensure_client_record_for_contact(
+                session,
+                telegram_user_id=telegram_user_id,
+                display_name=display_name,
+                username=username,
+            ),
+        )
 
     if parsed.action == ClientMenuAction.ABOUT_MASTER:
         response = handle_about_master_request()
@@ -458,7 +476,16 @@ def handle_client_callback_payload(
 
     if parsed.action == ClientMenuAction.CONTACT:
         response = handle_contact_request(settings)
-        return ClientCallbackResponse(text=response.text, buttons=response.buttons)
+        return ClientCallbackResponse(
+            text=response.text,
+            buttons=response.buttons,
+            should_commit=_ensure_client_record_for_contact(
+                session,
+                telegram_user_id=telegram_user_id,
+                display_name=display_name,
+                username=username,
+            ),
+        )
 
     if session is None:
         return ClientCallbackResponse(text=BOOKING_UNAVAILABLE_TEXT)
@@ -551,7 +578,12 @@ def handle_client_callback_payload(
         except ClientActiveBookingRequired:
             return _no_active_booking_response()
         except (SlotUnavailableError, ValueError):
-            return ClientCallbackResponse(text=SLOT_UNAVAILABLE_TEXT)
+            return _slot_unavailable_reschedule_response(
+                session,
+                settings,
+                telegram_user_id=telegram_user_id,
+                now=now,
+            )
         return ClientCallbackResponse(text=response.text, buttons=response.buttons)
 
     if parsed.action == ClientMenuAction.CONFIRM_RESCHEDULE:
@@ -569,7 +601,12 @@ def handle_client_callback_payload(
         except ClientActiveBookingRequired:
             return _no_active_booking_response()
         except (SlotUnavailableError, ValueError):
-            return ClientCallbackResponse(text=SLOT_UNAVAILABLE_TEXT)
+            return _slot_unavailable_reschedule_response(
+                session,
+                settings,
+                telegram_user_id=telegram_user_id,
+                now=now,
+            )
         return ClientCallbackResponse(
             text=response.text,
             buttons=response.buttons,
@@ -635,7 +672,7 @@ def handle_client_callback_payload(
                 now=now,
             )
         except (SlotUnavailableError, ValueError):
-            return ClientCallbackResponse(text=SLOT_UNAVAILABLE_TEXT)
+            return _slot_unavailable_haircut_response(session, settings, now=now)
 
         return ClientCallbackResponse(
             text=response.text,
@@ -666,7 +703,7 @@ def handle_client_callback_payload(
                 now=now,
             )
         except SlotUnavailableError:
-            return ClientCallbackResponse(text=SLOT_UNAVAILABLE_TEXT)
+            return _slot_unavailable_haircut_response(session, settings, now=now)
         except ClientIdentityRequired:
             return ClientCallbackResponse(text=IDENTITY_REQUIRED_TEXT)
         except ClientDailyBookingLimitExceeded:
@@ -959,6 +996,24 @@ def get_or_create_client(
 
     session.flush()
     return client
+
+
+def _ensure_client_record_for_contact(
+    session: Session | None,
+    *,
+    telegram_user_id: int | None,
+    display_name: str | None = None,
+    username: str | None = None,
+) -> bool:
+    if session is None or telegram_user_id is None:
+        return False
+    get_or_create_client(
+        session,
+        telegram_user_id=telegram_user_id,
+        display_name=display_name,
+        username=username,
+    )
+    return True
 
 
 async def dispatch_client_callback_async(
@@ -1356,6 +1411,50 @@ def _no_active_booking_response() -> ClientCallbackResponse:
         text=NO_ACTIVE_BOOKING_TEXT,
         buttons=_service_choice_buttons(),
     )
+
+
+def _slot_unavailable_haircut_response(
+    session: Session,
+    settings: Settings,
+    *,
+    now: datetime | None = None,
+) -> ClientCallbackResponse:
+    response = handle_haircut_booking_start(session, settings, now=now)
+    return ClientCallbackResponse(
+        text=_append_recovery_text(SLOT_UNAVAILABLE_TEXT, response.text),
+        buttons=response.buttons,
+    )
+
+
+def _slot_unavailable_reschedule_response(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    now: datetime | None = None,
+) -> ClientCallbackResponse:
+    try:
+        response = handle_reschedule_date_start(
+            session,
+            settings,
+            telegram_user_id=telegram_user_id,
+            now=now,
+        )
+    except ClientIdentityRequired:
+        return ClientCallbackResponse(text=IDENTITY_REQUIRED_TEXT)
+    except ClientActiveBookingRequired:
+        return _no_active_booking_response()
+
+    return ClientCallbackResponse(
+        text=_append_recovery_text(SLOT_UNAVAILABLE_TEXT, response.text),
+        buttons=response.buttons,
+    )
+
+
+def _append_recovery_text(primary: str, recovery: str) -> str:
+    if not recovery:
+        return primary
+    return f"{primary}\n\n{recovery}"
 
 
 def _slot_back_button(session: Session, settings: Settings, slot_id: int) -> MenuButton:

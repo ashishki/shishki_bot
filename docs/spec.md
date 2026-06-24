@@ -67,6 +67,8 @@ Acceptance criteria:
    choices and the main menu.
 5. Admin can create a manual booking with custom service, duration, date/time, price, place, and notes.
 6. Admin can send client a confirmation for a manual booking when the client has a Telegram identity.
+7. Manual bookings block all overlapping self-booking slots for their full
+   duration, not only the starting slot.
 
 Out of scope for v1: AI price/time estimation from photos or descriptions.
 

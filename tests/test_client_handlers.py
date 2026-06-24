@@ -521,6 +521,7 @@ def test_stale_slot_callback_is_recoverable() -> None:
 
     with Session(engine) as session:
         stale_slot = _create_slot(session, starts_at=now - timedelta(days=1))
+        available_slot = _create_slot(session, starts_at=now + timedelta(days=1))
 
         response = handle_client_callback_payload(
             session,
@@ -533,7 +534,69 @@ def test_stale_slot_callback_is_recoverable() -> None:
             now=now,
         )
 
-    assert response.text == SLOT_UNAVAILABLE_TEXT
+    assert response.text.startswith(SLOT_UNAVAILABLE_TEXT)
+    assert HAIRCUT_DATE_LIST_TEXT in response.text
+    assert tuple(button.action for button in response.buttons) == (
+        ClientMenuAction.SELECT_HAIRCUT_DATE,
+        ClientMenuAction.MY_BOOKING,
+        ClientMenuAction.MENU,
+    )
+    assert response.buttons[0].callback_data == client_callback_data(
+        ClientMenuAction.SELECT_HAIRCUT_DATE,
+        available_slot.starts_at.astimezone(_settings().timezone_info)
+        .date()
+        .isoformat(),
+    )
+
+
+def test_confirming_taken_slot_returns_fresh_dates_without_duplicate_booking() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    now = datetime.now(UTC)
+
+    with Session(engine, expire_on_commit=False) as session:
+        first_client = Client(
+            user=User(telegram_id=111, display_name="First Client"),
+            display_name="First Client",
+        )
+        taken_slot = _create_slot(session, starts_at=now + timedelta(days=1))
+        next_slot = _create_slot(session, starts_at=now + timedelta(days=2))
+        next_slot_date = (
+            next_slot.starts_at.astimezone(_settings().timezone_info).date().isoformat()
+        )
+        session.add(_booking(first_client, taken_slot, taken_slot.starts_at))
+        session.commit()
+
+        response = handle_client_callback_payload(
+            session,
+            _settings(),
+            callback_payload=client_callback_data(
+                ClientMenuAction.CONFIRM_HAIRCUT,
+                taken_slot.id,
+            ),
+            telegram_user_id=222,
+            display_name="Second Client",
+            now=now,
+        )
+        session.rollback()
+
+        bookings = session.scalars(select(Booking)).all()
+        users = session.scalars(select(User)).all()
+
+    assert response.text.startswith(SLOT_UNAVAILABLE_TEXT)
+    assert HAIRCUT_DATE_LIST_TEXT in response.text
+    assert not response.should_commit
+    assert tuple(button.action for button in response.buttons) == (
+        ClientMenuAction.SELECT_HAIRCUT_DATE,
+        ClientMenuAction.MY_BOOKING,
+        ClientMenuAction.MENU,
+    )
+    assert response.buttons[0].callback_data == client_callback_data(
+        ClientMenuAction.SELECT_HAIRCUT_DATE,
+        next_slot_date,
+    )
+    assert len(bookings) == 1
+    assert {user.telegram_id for user in users} == {111}
 
 
 def test_active_booking_view_ignores_past_bookings() -> None:
@@ -601,11 +664,21 @@ def test_complex_service_redirect() -> None:
             _settings(),
             callback_payload=client_callback_data(ClientMenuAction.COMPLEX_SERVICE),
             telegram_user_id=555,
+            display_name="Color Client",
+            username="color_client",
         )
+        assert callback_response.should_commit
+        session.commit()
         after = session.scalars(select(Booking)).all()
+        saved_user = session.scalar(select(User).where(User.telegram_id == 555))
+        saved_client = session.scalar(
+            select(Client).join(User).where(User.telegram_id == 555)
+        )
 
     assert before == []
     assert after == []
+    assert saved_user is not None
+    assert saved_client is not None
     assert "Окрашивание требует консультации" in response.text
     assert "Окрашивание требует консультации" in callback_response.text
     assert "https://t.me/test_stylist" in response.text
@@ -628,10 +701,20 @@ def test_consultation_redirect() -> None:
             _settings(),
             callback_payload=client_callback_data(ClientMenuAction.CONSULTATION),
             telegram_user_id=555,
+            display_name="Consult Client",
+            username="consult_client",
         )
+        assert callback_response.should_commit
+        session.commit()
         bookings = session.scalars(select(Booking)).all()
+        saved_user = session.scalar(select(User).where(User.telegram_id == 555))
+        saved_client = session.scalar(
+            select(Client).join(User).where(User.telegram_id == 555)
+        )
 
     assert bookings == []
+    assert saved_user is not None
+    assert saved_client is not None
     assert "Для консультации" in response.text
     assert "Для консультации" in callback_response.text
     assert "https://t.me/test_stylist" in callback_response.text

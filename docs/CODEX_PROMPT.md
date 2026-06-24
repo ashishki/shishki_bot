@@ -8,10 +8,10 @@ Phase: 5
 ## Current State
 
 - Phase: 5
-- Baseline: T17 complete; task graph complete with 76 total tests.
+- Baseline: T18 complete; task graph complete with 79 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-24 - ruff check, ruff format --check, pytest `tests -q` (76 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-24 - ruff check, ruff format --check, pytest `tests -q` (79 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,7 +29,7 @@ Phase: 5
 
 ## Next Task
 
-none - implementation task graph complete through T17.
+none - implementation task graph complete through T18.
 
 For future changes, read:
 
@@ -160,6 +160,12 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   greeting to avoid stylist branding, price, and duration on the first screen;
   expanded `О мастере`, coloring, consultation, no-active-booking, cancellation,
   and reschedule follow-ups so service choices and main menu remain reachable.
+- 2026-06-24 - T18 Manual Booking And Official Slots: added admin `/book`
+  command for manual service bookings, persisted coloring/consultation contact
+  clients for admin follow-up, blocked overlapping active bookings from
+  self-booking availability, improved stale-slot recovery, cleared test
+  booking/slot data after backup, and loaded official 2026-06-28 and 2026-07-04
+  haircut slots.
 
 ## Completed Bootstrap Work
 
@@ -191,6 +197,13 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   show haircut price/duration, referral access is shown after booking and inside
   the active booking flow, and secondary screens keep service/main-menu
   navigation available.
+- Admin manual bookings can be created with `/book <client_id> <YYYY-MM-DD>
+  <HH:MM> <minutes> <price> <service>`. The client must have a client card
+  first, usually by pressing `/start`, `Окрашивание`, or `Консультация`.
+- Live local database was backed up to
+  `<private-backup-path>`
+  before clearing test booking/slot records. Active official slots are
+  2026-06-28 13:00-19:00 and 2026-07-04 10:00-19:00 at the configured address.
 
 ## Instructions For Codex
 
