@@ -38,6 +38,31 @@ The code also provides tested service/admin wrapper behavior for:
 - Viewing referral progress on client cards.
 - Viewing referral bonuses and marking a cosmetics/styling bonus as awarded.
 
+## Manual Booking
+
+Use this when a client writes directly about coloring, consultation, or another
+non-standard service and you want to reserve time so it disappears from client
+self-booking.
+
+1. Ask the client to press `/start` in the bot at least once, or ask them to
+   press `Окрашивание` / `Консультация`. This creates their client card.
+2. Open `/admin` -> `Клиенты` and copy the `ID клиента`.
+3. Send an admin command:
+
+```text
+/book <client_id> <YYYY-MM-DD> <HH:MM> <minutes> <price> <service>
+```
+
+Example:
+
+```text
+/book 3 2026-06-28 15:00 180 250 Окрашивание
+```
+
+The command creates a confirmed booking, sends/logs a confirmation to the
+client when the client has Telegram identity, and blocks all overlapping
+client-visible slots for the duration of that booking.
+
 ## Referral Bonuses
 
 Clients can request a personal referral link from the bot. When a new client

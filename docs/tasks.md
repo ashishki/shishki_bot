@@ -606,3 +606,54 @@ Files:
 Context-Refs:
   - docs/spec.md#feature-1---client-main-menu
   - docs/spec.md#feature-3---complex-service-redirect-and-manual-booking
+
+## T18: Manual Booking And Official Slots
+
+Owner:      codex
+Phase:      5
+Type:       data
+Depends-On: T17
+Status:     [x] complete
+Completed:  2026-06-24
+
+Objective: |
+  Give the admin a practical manual booking command, make complex/manual
+  bookings block all overlapping client-visible slots, save contact-intent
+  clients for admin follow-up, improve stale-slot recovery, and replace test
+  schedule data with official announcement slots.
+
+Acceptance-Criteria:
+  - id: AC-1
+    description: "Admin can create a manual booking with `/book <client_id> <date> <time> <minutes> <price> <service>`."
+    test: "tests/test_admin_booking.py::test_admin_manual_booking_command_creates_booking_and_hides_overlap"
+  - id: AC-2
+    description: "Manual long bookings hide all overlapping self-booking slots and prevent clients from booking inside the occupied interval."
+    test: "tests/test_booking_service.py::test_manual_long_booking_blocks_overlapping_haircut_slots"
+  - id: AC-3
+    description: "If a selected slot becomes unavailable before confirmation, the client receives fresh date buttons instead of a dead end."
+    test: "tests/test_client_handlers.py::test_confirming_taken_slot_returns_fresh_dates_without_duplicate_booking"
+  - id: AC-4
+    description: "Coloring and consultation contact actions persist a client card for admin follow-up without creating a booking."
+    test: "tests/test_client_handlers.py::test_complex_service_redirect and tests/test_client_handlers.py::test_consultation_redirect"
+  - id: AC-5
+    description: "Live local database has test bookings/slots cleared after backup and official 2026-06-28 / 2026-07-04 slots loaded."
+    test: "manual SQLAlchemy verification recorded in implementation journal"
+
+Files:
+  - app/services/booking.py
+  - app/bot/handlers/client.py
+  - app/bot/handlers/admin.py
+  - tests/test_booking_service.py
+  - tests/test_client_handlers.py
+  - tests/test_admin_booking.py
+  - docs/ADMIN_GUIDE.md
+  - docs/spec.md
+  - docs/CODEX_PROMPT.md
+  - docs/tasks.md
+  - docs/IMPLEMENTATION_JOURNAL.md
+  - docs/EVIDENCE_INDEX.md
+
+Context-Refs:
+  - docs/spec.md#feature-2---simple-haircut-booking
+  - docs/spec.md#feature-3---complex-service-redirect-and-manual-booking
+  - docs/IMPLEMENTATION_CONTRACT.md#booking-integrity

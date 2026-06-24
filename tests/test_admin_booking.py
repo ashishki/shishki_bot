@@ -11,12 +11,14 @@ from app.bot.handlers.admin import (
     AdminAccessDenied,
     handle_admin_cancel_booking,
     handle_admin_manual_booking,
+    handle_admin_manual_booking_command,
     handle_admin_reschedule_booking,
     handle_admin_update_booking_details,
 )
 from app.config import Settings
 from app.db.models import (
     Base,
+    Booking,
     BookingStatus,
     Client,
     DeliveryStatus,
@@ -25,7 +27,11 @@ from app.db.models import (
     User,
 )
 from app.services import booking as booking_service
-from app.services.booking import BookingServiceError, SlotUnavailableError
+from app.services.booking import (
+    BookingServiceError,
+    SlotUnavailableError,
+    list_available_slots,
+)
 
 
 def test_admin_manual_booking() -> None:
@@ -76,6 +82,46 @@ def test_admin_manual_booking() -> None:
     assert booking.notes == "Synthetic test notes"
     assert len(booking.status_history) == 1
     assert booking.status_history[0].actor == "admin"
+
+
+def test_admin_manual_booking_command_creates_booking_and_hides_overlap() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    starts_at = (datetime.now(UTC) + timedelta(days=1)).replace(
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+
+    with Session(engine, expire_on_commit=False) as session:
+        client = _create_client(session)
+        overlap_one = _create_slot(session, starts_at=starts_at + timedelta(hours=1))
+        overlap_two = _create_slot(session, starts_at=starts_at + timedelta(hours=2))
+        after_manual = _create_slot(session, starts_at=starts_at + timedelta(hours=3))
+
+        attempt = handle_admin_manual_booking_command(
+            session,
+            _settings(),
+            telegram_user_id=111,
+            command_text=(
+                f"/book {client.id} {starts_at:%Y-%m-%d} "
+                f"{starts_at:%H:%M} 180 250 Окрашивание"
+            ),
+        )
+        session.commit()
+
+        booking = session.scalar(select(Booking))
+        available_slots = list_available_slots(session, now=datetime.now(UTC))
+
+    assert booking is not None
+    assert booking.service == "Окрашивание"
+    assert booking.duration_minutes == 180
+    assert booking.ends_at == starts_at + timedelta(hours=3)
+    assert attempt.kind == "booking_confirmation"
+    assert "Окрашивание" in attempt.text
+    assert available_slots == [after_manual]
+    assert overlap_one not in available_slots
+    assert overlap_two not in available_slots
 
 
 def test_admin_reschedule_notifies_client() -> None:

@@ -306,3 +306,14 @@ Status: append-only
 - Evidence collected: ruff check; ruff format --check; full pytest passed with 76 tests; integrity check; skill security gate.
 - Follow-ups: Smoke-test `/start`, `О мастере`, `Окрашивание`, `Консультация`, `Моя запись`, cancel, and reschedule paths in Telegram.
 - Notes: No schema change. Price and duration remain in slot confirmation/booking detail copy, not in the first greeting.
+
+### 2026-06-24 - T18 - Manual Booking And Official Slots
+
+- Scope: `app/services/booking.py`, `app/bot/handlers/client.py`, `app/bot/handlers/admin.py`, booking/client/admin tests, admin docs, handoff docs, and live local SQLite schedule data.
+- Why: Admin needs a practical way to create complex/manual bookings, client contact-intent needs to be visible in client cards, and active bookings must hide every overlapping self-booking slot, not only the exact starting slot.
+- Decisions applied: `D-002`, `D-003`, `D-004`
+- Evidence collected: targeted booking/client/admin tests; ruff check; ruff format --check; full pytest passed with 79 tests; integrity check; skill security gate; systemd service restarted and active.
+- Data operation: stopped `shishki-bot.service`, backed up `shishki_bot.db` to `/srv/openclaw-you/backups/shishki_bot/shishki_bot_before_official_slots_20260624_130105.db`, cleared 1 test booking, 10 test slots, 2 reminder logs, and 1 status-history row, then created 17 official slots.
+- Official slots: 2026-06-28 Sunday hourly starts 13:00 through 19:00; 2026-07-04 Saturday hourly starts 10:00 through 19:00; place is `Сулхана Цинцадзе 22, м. Технический Университет`.
+- Follow-ups: Smoke-test `/book`, `/admin` -> `Клиенты`, and the client stale-slot conflict in Telegram before a large announcement.
+- Notes: No schema migration. `/book` creates/logs a client confirmation attempt and relies on existing client cards; clients create a card by pressing `/start`, `Окрашивание`, or `Консультация`.

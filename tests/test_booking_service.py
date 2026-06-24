@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 
 import pytest
 from sqlalchemy import create_engine
@@ -13,6 +14,7 @@ from app.services.booking import (
     SlotUnavailableError,
     UnsupportedSelfBookServiceError,
     create_haircut_booking,
+    create_manual_booking,
     create_simple_booking,
     list_available_slots,
 )
@@ -132,6 +134,45 @@ def test_list_available_slots_filters_unavailable_slots() -> None:
     assert blocked not in available_slots
     assert past not in available_slots
     assert booked not in available_slots
+
+
+def test_manual_long_booking_blocks_overlapping_haircut_slots() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    now = datetime.now(UTC)
+    first_start = now + timedelta(days=1)
+
+    with Session(engine, expire_on_commit=False) as session:
+        admin_client = _create_client(session, telegram_id=101)
+        haircut_client = _create_client(session, telegram_id=202)
+        start_slot = _create_slot(session, starts_at=first_start)
+        overlap_one = _create_slot(session, starts_at=first_start + timedelta(hours=1))
+        overlap_two = _create_slot(session, starts_at=first_start + timedelta(hours=2))
+        after_manual = _create_slot(session, starts_at=first_start + timedelta(hours=3))
+
+        manual = create_manual_booking(
+            session,
+            client_id=admin_client.id,
+            slot_id=start_slot.id,
+            service="coloring",
+            duration_minutes=180,
+            price_amount=Decimal("250.00"),
+        )
+        session.commit()
+
+        available_slots = list_available_slots(session, now=now)
+
+        with pytest.raises(SlotUnavailableError):
+            create_haircut_booking(
+                session,
+                client_id=haircut_client.id,
+                slot_id=overlap_one.id,
+            )
+
+    assert manual.ends_at == first_start + timedelta(hours=3)
+    assert available_slots == [after_manual]
+    assert overlap_one not in available_slots
+    assert overlap_two not in available_slots
 
 
 def test_integrity_error_does_not_call_session_rollback(monkeypatch) -> None:
