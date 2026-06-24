@@ -261,3 +261,12 @@ Status: append-only
 - Evidence collected: ruff check; ruff format --check; full pytest passed with 66 tests; integrity check; skill security gate; `shishki-bot.service` restarted and active; reminder logs present for the current future booking.
 - Follow-ups: Monitor first live reminder delivery in `reminder_logs` and `journalctl -u shishki-bot.service`.
 - Notes: SQLite naive datetimes are treated as the business timezone for reminder due checks.
+
+### 2026-06-24 - Client About Master Card
+
+- Scope: `about_me.md`, `IMG_9385.PNG`, `app/bot/keyboards.py`, `app/bot/handlers/client.py`, `tests/test_client_handlers.py`, `docs/CODEX_PROMPT.md`, `docs/EVIDENCE_INDEX.md`
+- Why: New clients need a low-friction way to learn about the stylist before booking.
+- Decisions applied: `D-002`
+- Evidence collected: fresh pull from `main`; ruff check; ruff format --check; full pytest passed with 67 tests; integrity check; skill security gate; `shishki-bot.service` restarted and active.
+- Follow-ups: Referral mechanics should start as a manual/text offer before adding tracking automation.
+- Notes: The about card sends the profile photo with the pulled markdown text as the caption and gives booking/contact buttons.

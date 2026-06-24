@@ -11,6 +11,7 @@ from app.bot.handlers.client import (
     HAIRCUT_DATE_LIST_TEXT,
     SLOT_UNAVAILABLE_TEXT,
     dispatch_client_callback_async,
+    handle_about_master_request,
     handle_active_booking_view,
     handle_client_callback_payload,
     handle_complex_service_redirect,
@@ -43,11 +44,23 @@ def test_start_menu() -> None:
     assert tuple(button.action for button in response.buttons) == (
         ClientMenuAction.BOOK_HAIRCUT,
         ClientMenuAction.COMPLEX_SERVICE,
+        ClientMenuAction.ABOUT_MASTER,
         ClientMenuAction.MY_BOOKING,
         ClientMenuAction.RESCHEDULE_CANCEL,
         ClientMenuAction.CONTACT,
     )
     assert handle_unknown_input(_settings()) == response
+
+
+def test_about_master_response() -> None:
+    response = handle_about_master_request()
+
+    assert "Я Артём" in response.text
+    assert "Колорист года" in response.text
+    assert tuple(button.action for button in response.buttons) == (
+        ClientMenuAction.BOOK_HAIRCUT,
+        ClientMenuAction.CONTACT,
+    )
 
 
 def test_client_haircut_booking_flow() -> None:

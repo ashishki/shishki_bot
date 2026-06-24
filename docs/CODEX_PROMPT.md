@@ -11,7 +11,7 @@ Phase: 5
 - Baseline: T13 complete; task graph complete with 56 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-23 - ruff check, ruff format --check, pytest `tests -q` (66 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-24 - ruff check, ruff format --check, pytest `tests -q` (67 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -159,6 +159,8 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
 - Reminder delivery is wired into runtime: `app.main` starts the reminder
   scheduler with the bot, due reminders are sent through Telegram, and the
   current systemd service has been restarted on the updated code.
+- Client menu includes an `О мастере` option that sends `IMG_9385.PNG` with
+  the text from `about_me.md` and follow-up buttons for booking/contact.
 
 ## Instructions For Codex
 

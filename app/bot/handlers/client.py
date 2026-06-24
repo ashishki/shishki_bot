@@ -6,6 +6,8 @@ from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from html import escape
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -57,6 +59,9 @@ SLOT_UNAVAILABLE_TEXT = "Это время уже недоступно. Выбе
 IDENTITY_REQUIRED_TEXT = "Не удалось определить ваш Telegram-профиль."
 UNKNOWN_ACTION_TEXT = "Неизвестное действие."
 BOOKING_UNAVAILABLE_TEXT = "Запись временно недоступна."
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+ABOUT_MASTER_TEXT_PATH = PROJECT_ROOT / "about_me.md"
+ABOUT_MASTER_PHOTO_PATH = PROJECT_ROOT / "IMG_9385.PNG"
 
 
 class ClientIdentityRequired(ValueError):
@@ -296,6 +301,10 @@ def handle_client_callback_payload(
         response = handle_complex_service_redirect(settings)
         return ClientCallbackResponse(text=response.text)
 
+    if parsed.action == ClientMenuAction.ABOUT_MASTER:
+        response = handle_about_master_request()
+        return ClientCallbackResponse(text=response.text, buttons=response.buttons)
+
     if parsed.action == ClientMenuAction.CONTACT:
         response = handle_contact_request(settings)
         return ClientCallbackResponse(text=response.text)
@@ -510,6 +519,13 @@ def handle_complex_service_redirect(settings: Settings) -> ClientTextResponse:
                 "После консультации запись будет создана вручную.",
             ]
         )
+    )
+
+
+def handle_about_master_request() -> ClientTextResponse:
+    return ClientTextResponse(
+        text=_about_master_text(),
+        buttons=(_dates_button(label="Записаться"), _contact_button()),
     )
 
 
@@ -779,6 +795,7 @@ def build_client_router(
         from aiogram.filters import CommandStart
         from aiogram.types import (
             CallbackQuery,
+            FSInputFile,
             InlineKeyboardButton,
             InlineKeyboardMarkup,
             Message,
@@ -815,6 +832,18 @@ def build_client_router(
 
     @router.callback_query(F.data.startswith(f"{CLIENT_CALLBACK_PREFIX}:"))
     async def client_callback(callback: CallbackQuery) -> None:
+        if _is_about_master_callback(callback.data):
+            await callback.answer()
+            if callback.message:
+                response = handle_about_master_request()
+                await callback.message.answer_photo(
+                    photo=FSInputFile(ABOUT_MASTER_PHOTO_PATH),
+                    caption=_html_caption(response.text),
+                    reply_markup=_buttons_to_keyboard(response.buttons),
+                    parse_mode="HTML",
+                )
+            return
+
         response = await _dispatch_callback(callback)
         await callback.answer()
         if callback.message:
@@ -912,6 +941,14 @@ def build_client_router(
     return router
 
 
+def _is_about_master_callback(payload: str | None) -> bool:
+    try:
+        parsed = parse_client_callback_data(payload)
+    except ValueError:
+        return False
+    return parsed.action == ClientMenuAction.ABOUT_MASTER
+
+
 def _slot_option(
     slot: Slot,
     settings: Settings,
@@ -963,6 +1000,14 @@ def _my_booking_button(*, label: str = "Моя запись") -> MenuButton:
         action=ClientMenuAction.MY_BOOKING,
         label=label,
         callback_data=client_callback_data(ClientMenuAction.MY_BOOKING),
+    )
+
+
+def _contact_button(*, label: str = "Связаться") -> MenuButton:
+    return MenuButton(
+        action=ClientMenuAction.CONTACT,
+        label=label,
+        callback_data=client_callback_data(ClientMenuAction.CONTACT),
     )
 
 
@@ -1058,6 +1103,20 @@ def _settings_location_links(settings: Settings) -> dict[str, str | None]:
         "google_map_url": settings.google_map_url,
         "default_map_url": settings.default_map_url,
     }
+
+
+def _about_master_text() -> str:
+    try:
+        return ABOUT_MASTER_TEXT_PATH.read_text(encoding="utf-8").strip()
+    except OSError:
+        return (
+            "Я Артём, мастер по цвету и форме. Работаю с вниманием к деталям, "
+            "консультацией и рекомендациями по уходу."
+        )
+
+
+def _html_caption(text: str) -> str:
+    return escape(text, quote=False)
 
 
 def _active_booking_for_user(
