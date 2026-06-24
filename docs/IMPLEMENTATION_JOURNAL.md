@@ -297,3 +297,12 @@ Status: append-only
 - Evidence collected: ruff check; ruff format --check; full pytest passed with 75 tests; integrity check; skill security gate.
 - Follow-ups: Test the live `/start`, referral, and `Моя запись` paths in Telegram for copy fit and button order.
 - Notes: No schema change. Main menu now focuses on service/account choices only; referral entry points remain after booking and from active booking.
+
+### 2026-06-24 - T17 - Client Flow Consistency Cleanup
+
+- Scope: `app/bot/handlers/client.py`, `tests/test_client_handlers.py`, and client-flow docs.
+- Why: The first greeting still showed too much detail, and secondary screens such as `О мастере`, coloring, consultation, no-active-booking, cancellation, and reschedule paths could leave clients with haircut-only or no follow-up navigation.
+- Decisions applied: `D-002`, `D-003`
+- Evidence collected: ruff check; ruff format --check; full pytest passed with 76 tests; integrity check; skill security gate.
+- Follow-ups: Smoke-test `/start`, `О мастере`, `Окрашивание`, `Консультация`, `Моя запись`, cancel, and reschedule paths in Telegram.
+- Notes: No schema change. Price and duration remain in slot confirmation/booking detail copy, not in the first greeting.

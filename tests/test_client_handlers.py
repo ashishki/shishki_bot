@@ -40,10 +40,11 @@ def test_start_menu() -> None:
 
     assert response.text == CLIENT_WELCOME_TEXT
     assert "Привет" in response.text
-    assert "Артём" in response.text
-    assert "Стрижка" in response.text
-    assert "60 мин" in response.text
-    assert "90 GEL" in response.text
+    assert "Здесь можно записаться" in response.text
+    assert "Артём" not in response.text
+    assert "SHISHKI" not in response.text
+    assert "60 мин" not in response.text
+    assert "90 GEL" not in response.text
     assert "Что хотите сделать?" in response.text
     assert tuple(button.action for button in response.buttons) == client_menu_actions()
     assert tuple(button.action for button in response.buttons) == (
@@ -70,7 +71,10 @@ def test_about_master_response() -> None:
     assert "Колорист года" in response.text
     assert tuple(button.action for button in response.buttons) == (
         ClientMenuAction.BOOK_HAIRCUT,
-        ClientMenuAction.CONTACT,
+        ClientMenuAction.COMPLEX_SERVICE,
+        ClientMenuAction.CONSULTATION,
+        ClientMenuAction.MY_BOOKING,
+        ClientMenuAction.MENU,
     )
 
 
@@ -124,6 +128,7 @@ def test_client_haircut_booking_flow() -> None:
         assert tuple(button.action for button in date_response.buttons) == (
             ClientMenuAction.SELECT_HAIRCUT_DATE,
             ClientMenuAction.MY_BOOKING,
+            ClientMenuAction.MENU,
         )
         assert date_response.buttons[0].callback_data == client_callback_data(
             ClientMenuAction.SELECT_HAIRCUT_DATE,
@@ -143,6 +148,7 @@ def test_client_haircut_booking_flow() -> None:
         assert tuple(button.action for button in slot_response.buttons) == (
             ClientMenuAction.BOOK_HAIRCUT,
             ClientMenuAction.MY_BOOKING,
+            ClientMenuAction.MENU,
         )
         assert blocked.id not in {slot.slot_id for slot in slot_response.slots}
         assert past.id not in {slot.slot_id for slot in slot_response.slots}
@@ -202,6 +208,7 @@ def test_client_callback_requires_confirmation_before_booking() -> None:
         assert tuple(button.action for button in date_list.buttons) == (
             ClientMenuAction.SELECT_HAIRCUT_DATE,
             ClientMenuAction.MY_BOOKING,
+            ClientMenuAction.MENU,
         )
         assert date_list.text == HAIRCUT_DATE_LIST_TEXT
         assert session.scalar(select(Booking)) is None
@@ -217,6 +224,7 @@ def test_client_callback_requires_confirmation_before_booking() -> None:
         assert tuple(button.action for button in slot_list.buttons) == (
             ClientMenuAction.BOOK_HAIRCUT,
             ClientMenuAction.MY_BOOKING,
+            ClientMenuAction.MENU,
         )
         assert session.scalar(select(Booking)) is None
 
@@ -231,6 +239,7 @@ def test_client_callback_requires_confirmation_before_booking() -> None:
         assert tuple(button.action for button in confirmation_prompt.buttons) == (
             ClientMenuAction.CONFIRM_HAIRCUT,
             ClientMenuAction.SELECT_HAIRCUT_DATE,
+            ClientMenuAction.MENU,
         )
         assert session.scalar(select(Booking)) is None
 
@@ -248,8 +257,9 @@ def test_client_callback_requires_confirmation_before_booking() -> None:
             ClientMenuAction.MY_BOOKING,
             ClientMenuAction.REFERRAL_PROGRAM,
             ClientMenuAction.BOOK_HAIRCUT,
+            ClientMenuAction.MENU,
         )
-        assert booked.buttons[2].label == "Записаться еще"
+        assert booked.buttons[2].label == "Еще одна стрижка"
         session.commit()
 
         booking = session.scalar(select(Booking))
@@ -293,6 +303,7 @@ def test_client_cannot_book_more_than_two_haircuts_same_day() -> None:
     assert tuple(button.action for button in response.buttons) == (
         ClientMenuAction.BOOK_HAIRCUT,
         ClientMenuAction.CONTACT,
+        ClientMenuAction.MENU,
     )
     assert len(bookings) == 2
 
@@ -320,7 +331,7 @@ async def test_async_callback_dispatch_commits_only_confirmation() -> None:
         telegram_user_id=555,
         now=now,
     )
-    assert len(date_response.buttons) == 2
+    assert len(date_response.buttons) == 3
 
     async with session_factory() as async_session:
         booking_count = await async_session.run_sync(
@@ -345,7 +356,7 @@ async def test_async_callback_dispatch_commits_only_confirmation() -> None:
         now=now,
     )
     assert not prompt_response.should_commit
-    assert len(prompt_response.buttons) == 2
+    assert len(prompt_response.buttons) == 3
 
     booked_response = await dispatch_client_callback_async(
         session_factory,
@@ -357,7 +368,7 @@ async def test_async_callback_dispatch_commits_only_confirmation() -> None:
         now=now,
     )
     assert booked_response.should_commit
-    assert len(booked_response.buttons) == 3
+    assert len(booked_response.buttons) == 4
 
     async with session_factory() as async_session:
         booking = await async_session.run_sync(
@@ -398,8 +409,9 @@ def test_client_can_view_and_cancel_active_booking() -> None:
             ClientMenuAction.CANCEL_BOOKING,
             ClientMenuAction.REFERRAL_PROGRAM,
             ClientMenuAction.BOOK_HAIRCUT,
+            ClientMenuAction.MENU,
         )
-        assert my_booking.buttons[-1].label == "Записаться еще"
+        assert my_booking.buttons[-2].label == "Еще одна стрижка"
 
         cancel_prompt = handle_client_callback_payload(
             session,
@@ -454,6 +466,7 @@ def test_client_can_reschedule_active_booking_to_new_slot() -> None:
         assert tuple(button.action for button in date_list.buttons) == (
             ClientMenuAction.SELECT_RESCHEDULE_DATE,
             ClientMenuAction.MY_BOOKING,
+            ClientMenuAction.MENU,
         )
 
         slot_list = handle_client_callback_payload(
@@ -480,6 +493,7 @@ def test_client_can_reschedule_active_booking_to_new_slot() -> None:
         assert tuple(button.action for button in prompt.buttons) == (
             ClientMenuAction.CONFIRM_RESCHEDULE,
             ClientMenuAction.SELECT_RESCHEDULE_DATE,
+            ClientMenuAction.MENU,
         )
 
         rescheduled = handle_client_callback_payload(
@@ -554,6 +568,27 @@ def test_active_booking_view_ignores_past_bookings() -> None:
     assert past_starts_at.strftime("%H:%M") not in response.text
 
 
+def test_no_active_booking_view_offers_service_choices() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        response = handle_client_callback_payload(
+            session,
+            _settings(),
+            callback_payload=client_callback_data(ClientMenuAction.MY_BOOKING),
+            telegram_user_id=555,
+        )
+
+    assert "У вас пока нет активной записи" in response.text
+    assert tuple(button.action for button in response.buttons) == (
+        ClientMenuAction.BOOK_HAIRCUT,
+        ClientMenuAction.COMPLEX_SERVICE,
+        ClientMenuAction.CONSULTATION,
+        ClientMenuAction.MENU,
+    )
+
+
 def test_complex_service_redirect() -> None:
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
@@ -575,6 +610,11 @@ def test_complex_service_redirect() -> None:
     assert "Окрашивание требует консультации" in callback_response.text
     assert "https://t.me/test_stylist" in response.text
     assert "сам внесу запись" in response.text
+    assert tuple(button.action for button in callback_response.buttons) == (
+        ClientMenuAction.BOOK_HAIRCUT,
+        ClientMenuAction.CONSULTATION,
+        ClientMenuAction.MENU,
+    )
 
 
 def test_consultation_redirect() -> None:
@@ -595,6 +635,11 @@ def test_consultation_redirect() -> None:
     assert "Для консультации" in response.text
     assert "Для консультации" in callback_response.text
     assert "https://t.me/test_stylist" in callback_response.text
+    assert tuple(button.action for button in callback_response.buttons) == (
+        ClientMenuAction.BOOK_HAIRCUT,
+        ClientMenuAction.COMPLEX_SERVICE,
+        ClientMenuAction.MENU,
+    )
 
 
 def _settings() -> Settings:

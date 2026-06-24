@@ -565,3 +565,44 @@ Files:
 Context-Refs:
   - docs/spec.md#feature-1---client-main-menu
   - docs/spec.md#feature-2---simple-haircut-booking
+
+## T17: Client Flow Consistency Cleanup
+
+Owner:      codex
+Phase:      5
+Type:       none
+Depends-On: T16
+Status:     [x] complete
+Completed:  2026-06-24
+
+Objective: |
+  Simplify the first greeting further and remove client navigation dead ends so
+  service choices remain reachable after profile, chat-redirect, no-booking,
+  cancellation, and reschedule screens.
+
+Acceptance-Criteria:
+  - id: AC-1
+    description: "Start greeting is concise and does not show stylist branding, haircut duration, or price."
+    test: "tests/test_client_handlers.py::test_start_menu"
+  - id: AC-2
+    description: "About master follow-up buttons include haircut, coloring, consultation, my booking, and main menu."
+    test: "tests/test_client_handlers.py::test_about_master_response"
+  - id: AC-3
+    description: "Coloring and consultation redirect screens keep service navigation available."
+    test: "tests/test_client_handlers.py::test_complex_service_redirect and tests/test_client_handlers.py::test_consultation_redirect"
+  - id: AC-4
+    description: "No-active-booking, booking, cancellation, and reschedule paths return useful next actions instead of haircut-only dead ends."
+    test: "tests/test_client_handlers.py"
+
+Files:
+  - app/bot/handlers/client.py
+  - tests/test_client_handlers.py
+  - docs/spec.md
+  - docs/CODEX_PROMPT.md
+  - docs/tasks.md
+  - docs/IMPLEMENTATION_JOURNAL.md
+  - docs/EVIDENCE_INDEX.md
+
+Context-Refs:
+  - docs/spec.md#feature-1---client-main-menu
+  - docs/spec.md#feature-3---complex-service-redirect-and-manual-booking

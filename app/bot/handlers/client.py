@@ -53,12 +53,10 @@ HAIRCUT_PRICE_LABEL = str(DEFAULT_HAIRCUT_PRICE).rstrip("0").rstrip(".")
 
 CLIENT_WELCOME_TEXT = "\n".join(
     [
-        "Привет! Я Артём, мастер SHISHKI.",
+        "Привет!",
         "",
-        "Здесь можно записаться на стрижку или написать мне "
-        "по окрашиванию/консультации.",
+        "Здесь можно записаться на стрижку или написать по окрашиванию/консультации.",
         "",
-        f"Стрижка — {DEFAULT_HAIRCUT_DURATION_MINUTES} мин, {HAIRCUT_PRICE_LABEL} GEL.",
         "Что хотите сделать?",
     ]
 )
@@ -160,11 +158,18 @@ def handle_haircut_booking_start(
 ) -> ClientMenuResponse:
     slots = tuple(list_available_slots(session, now=now))
     if not slots:
-        return ClientMenuResponse(text=NO_AVAILABLE_SLOTS_TEXT, buttons=())
+        return ClientMenuResponse(
+            text=NO_AVAILABLE_SLOTS_TEXT,
+            buttons=_service_choice_buttons(
+                include_haircut=False,
+                include_my_booking=True,
+            ),
+        )
 
     return ClientMenuResponse(
         text=HAIRCUT_DATE_LIST_TEXT,
-        buttons=_date_buttons(slots, settings) + (_my_booking_button(),),
+        buttons=_date_buttons(slots, settings)
+        + (_my_booking_button(), _main_menu_button()),
     )
 
 
@@ -184,13 +189,17 @@ def handle_haircut_date_selection(
         return SlotListResponse(
             text=NO_AVAILABLE_SLOTS_TEXT,
             slots=(),
-            buttons=(_dates_button(),),
+            buttons=(_dates_button(label="Назад к датам"), _main_menu_button()),
         )
 
     return SlotListResponse(
         text=f"{HAIRCUT_SLOT_LIST_TEXT} {_format_date_label(selected_date)}",
         slots=tuple(_slot_option(slot, settings) for slot in slots),
-        buttons=(_dates_button(label="Назад к датам"), _my_booking_button()),
+        buttons=(
+            _dates_button(label="Назад к датам"),
+            _my_booking_button(),
+            _main_menu_button(),
+        ),
     )
 
 
@@ -263,7 +272,8 @@ def handle_haircut_booking_confirmation(
         buttons=(
             _my_booking_button(),
             _referral_program_button(),
-            _dates_button(label="Записаться еще"),
+            _dates_button(label="Еще одна стрижка"),
+            _main_menu_button(),
         ),
     )
 
@@ -282,7 +292,7 @@ def handle_referral_program_request(
     if not bot_username:
         return ClientTextResponse(
             text=REFERRAL_LINK_UNAVAILABLE_TEXT,
-            buttons=(_dates_button(), _contact_button()),
+            buttons=(_contact_button(), _main_menu_button()),
         )
 
     client = get_or_create_client(
@@ -376,7 +386,7 @@ def handle_client_booking_cancellation(
             **_settings_location_links(settings),
         ),
         booking=booking,
-        buttons=(_dates_button(),),
+        buttons=_service_choice_buttons(),
     )
 
 
@@ -405,7 +415,11 @@ def handle_client_booking_reschedule(
             **_settings_location_links(settings),
         ),
         booking=booking,
-        buttons=(_my_booking_button(), _dates_button()),
+        buttons=(
+            _my_booking_button(),
+            _dates_button(label="Еще одна стрижка"),
+            _main_menu_button(),
+        ),
     )
 
 
@@ -432,11 +446,11 @@ def handle_client_callback_payload(
 
     if parsed.action == ClientMenuAction.COMPLEX_SERVICE:
         response = handle_complex_service_redirect(settings)
-        return ClientCallbackResponse(text=response.text)
+        return ClientCallbackResponse(text=response.text, buttons=response.buttons)
 
     if parsed.action == ClientMenuAction.CONSULTATION:
         response = handle_consultation_redirect(settings)
-        return ClientCallbackResponse(text=response.text)
+        return ClientCallbackResponse(text=response.text, buttons=response.buttons)
 
     if parsed.action == ClientMenuAction.ABOUT_MASTER:
         response = handle_about_master_request()
@@ -444,7 +458,7 @@ def handle_client_callback_payload(
 
     if parsed.action == ClientMenuAction.CONTACT:
         response = handle_contact_request(settings)
-        return ClientCallbackResponse(text=response.text)
+        return ClientCallbackResponse(text=response.text, buttons=response.buttons)
 
     if session is None:
         return ClientCallbackResponse(text=BOOKING_UNAVAILABLE_TEXT)
@@ -635,6 +649,7 @@ def handle_client_callback_payload(
                     ),
                 ),
                 _slot_back_button(session, settings, slot_id),
+                _main_menu_button(),
             ),
         )
 
@@ -657,7 +672,11 @@ def handle_client_callback_payload(
         except ClientDailyBookingLimitExceeded:
             return ClientCallbackResponse(
                 text=HAIRCUT_DAILY_LIMIT_TEXT,
-                buttons=(_dates_button(), _contact_button()),
+                buttons=(
+                    _dates_button(label="Другие даты"),
+                    _contact_button(label="Написать"),
+                    _main_menu_button(),
+                ),
             )
         except ValueError:
             return ClientCallbackResponse(text=UNKNOWN_ACTION_TEXT)
@@ -679,7 +698,8 @@ def handle_complex_service_redirect(settings: Settings) -> ClientTextResponse:
                 f"Напишите мне в чат: {contact}",
                 "Я уточню длительность, сложность и сам внесу запись.",
             ]
-        )
+        ),
+        buttons=_service_choice_buttons(include_complex=False),
     )
 
 
@@ -690,20 +710,22 @@ def handle_consultation_redirect(settings: Settings) -> ClientTextResponse:
                 "Для консультации напишите мне в чат.",
                 _contact_target(settings),
             ]
-        )
+        ),
+        buttons=_service_choice_buttons(include_consultation=False),
     )
 
 
 def handle_about_master_request() -> ClientTextResponse:
     return ClientTextResponse(
         text=_about_master_text(),
-        buttons=(_dates_button(label="Записаться"), _contact_button()),
+        buttons=_service_choice_buttons(include_my_booking=True),
     )
 
 
 def handle_contact_request(settings: Settings) -> ClientTextResponse:
     return ClientTextResponse(
-        text=f"Связаться со стилистом: {_contact_target(settings)}"
+        text=f"Связаться со стилистом: {_contact_target(settings)}",
+        buttons=_service_choice_buttons(include_my_booking=True),
     )
 
 
@@ -721,7 +743,7 @@ def handle_active_booking_view(
     if booking is None:
         return ClientTextResponse(
             text=NO_ACTIVE_BOOKING_TEXT,
-            buttons=(_dates_button(label="Стрижка"), _main_menu_button()),
+            buttons=_service_choice_buttons(),
         )
 
     booking_text = booking_confirmation_message(
@@ -744,7 +766,8 @@ def handle_active_booking_view(
             _change_booking_button(),
             _cancel_booking_button(),
             _referral_program_button(),
-            _dates_button(label="Записаться еще"),
+            _dates_button(label="Еще одна стрижка"),
+            _main_menu_button(),
         ),
     )
 
@@ -765,7 +788,7 @@ def handle_reschedule_date_start(
     if not slots:
         return ClientMenuResponse(
             text=NO_AVAILABLE_SLOTS_TEXT,
-            buttons=(_my_booking_button(),),
+            buttons=(_my_booking_button(), _main_menu_button()),
         )
     return ClientMenuResponse(
         text=CHANGE_BOOKING_DATE_TEXT,
@@ -774,7 +797,7 @@ def handle_reschedule_date_start(
             settings,
             action=ClientMenuAction.SELECT_RESCHEDULE_DATE,
         )
-        + (_my_booking_button(label="Назад к моей записи"),),
+        + (_my_booking_button(label="Назад к моей записи"), _main_menu_button()),
     )
 
 
@@ -800,7 +823,11 @@ def handle_reschedule_date_selection(
         return SlotListResponse(
             text=NO_AVAILABLE_SLOTS_TEXT,
             slots=(),
-            buttons=(_change_booking_button(label="Назад к датам"),),
+            buttons=(
+                _change_booking_button(label="Назад к датам"),
+                _my_booking_button(),
+                _main_menu_button(),
+            ),
         )
     return SlotListResponse(
         text=f"{HAIRCUT_SLOT_LIST_TEXT} {_format_date_label(selected_date)}",
@@ -815,6 +842,7 @@ def handle_reschedule_date_selection(
         buttons=(
             _change_booking_button(label="Назад к датам"),
             _my_booking_button(),
+            _main_menu_button(),
         ),
     )
 
@@ -850,6 +878,7 @@ def handle_reschedule_slot_selection(
                 ),
             ),
             _reschedule_slot_back_button(session, settings, slot_id),
+            _main_menu_button(),
         ),
     )
 
@@ -892,7 +921,8 @@ def handle_reschedule_cancel_request(settings: Settings) -> ClientTextResponse:
                 "Перенести или отменить запись можно в разделе «Моя запись».",
                 f"Если нужно обсудить детали: {_contact_target(settings)}",
             ]
-        )
+        ),
+        buttons=(_my_booking_button(), _main_menu_button()),
     )
 
 
@@ -1251,6 +1281,22 @@ def _my_booking_button(*, label: str = "Моя запись") -> MenuButton:
     )
 
 
+def _complex_service_button(*, label: str = "Окрашивание") -> MenuButton:
+    return MenuButton(
+        action=ClientMenuAction.COMPLEX_SERVICE,
+        label=label,
+        callback_data=client_callback_data(ClientMenuAction.COMPLEX_SERVICE),
+    )
+
+
+def _consultation_button(*, label: str = "Консультация") -> MenuButton:
+    return MenuButton(
+        action=ClientMenuAction.CONSULTATION,
+        label=label,
+        callback_data=client_callback_data(ClientMenuAction.CONSULTATION),
+    )
+
+
 def _contact_button(*, label: str = "Связаться") -> MenuButton:
     return MenuButton(
         action=ClientMenuAction.CONTACT,
@@ -1283,10 +1329,32 @@ def _cancel_booking_button(*, label: str = "Отменить") -> MenuButton:
     )
 
 
+def _service_choice_buttons(
+    *,
+    include_haircut: bool = True,
+    include_complex: bool = True,
+    include_consultation: bool = True,
+    include_my_booking: bool = False,
+    include_main_menu: bool = True,
+) -> tuple[MenuButton, ...]:
+    buttons: list[MenuButton] = []
+    if include_haircut:
+        buttons.append(_dates_button(label="Стрижка"))
+    if include_complex:
+        buttons.append(_complex_service_button())
+    if include_consultation:
+        buttons.append(_consultation_button())
+    if include_my_booking:
+        buttons.append(_my_booking_button())
+    if include_main_menu:
+        buttons.append(_main_menu_button())
+    return tuple(buttons)
+
+
 def _no_active_booking_response() -> ClientCallbackResponse:
     return ClientCallbackResponse(
         text=NO_ACTIVE_BOOKING_TEXT,
-        buttons=(_dates_button(label="Стрижка"), _main_menu_button()),
+        buttons=_service_choice_buttons(),
     )
 
 

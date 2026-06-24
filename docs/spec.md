@@ -26,11 +26,13 @@ as referrals appear after booking or inside the active booking flow.
 Acceptance criteria:
 
 1. Client can open `/start` and see concise welcome text plus buttons.
-2. Welcome text states haircut duration, haircut price, and that coloring and
-   consultation continue through personal chat.
+2. Welcome text is short, avoids service price/duration detail, and points the
+   client to service choice buttons.
 3. Menu includes haircut, coloring, consultation, my booking, and about master
    options.
-4. Unknown input returns the main menu without creating a booking.
+4. About master, no-active-booking, and service redirect screens keep useful
+   service/main-menu navigation available.
+5. Unknown input returns the main menu without creating a booking.
 
 Out of scope for v1: multilingual copy and rich media onboarding.
 
@@ -61,8 +63,10 @@ Acceptance criteria:
 1. Client choosing coloring receives consultation copy and stylist contact link.
 2. Client cannot self-book coloring directly.
 3. Client choosing consultation receives stylist contact link without creating a booking.
-4. Admin can create a manual booking with custom service, duration, date/time, price, place, and notes.
-5. Admin can send client a confirmation for a manual booking when the client has a Telegram identity.
+4. Coloring and consultation redirect screens keep buttons for other service
+   choices and the main menu.
+5. Admin can create a manual booking with custom service, duration, date/time, price, place, and notes.
+6. Admin can send client a confirmation for a manual booking when the client has a Telegram identity.
 
 Out of scope for v1: AI price/time estimation from photos or descriptions.
 

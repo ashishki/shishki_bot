@@ -8,10 +8,10 @@ Phase: 5
 ## Current State
 
 - Phase: 5
-- Baseline: T16 complete; task graph complete with 75 total tests.
+- Baseline: T17 complete; task graph complete with 76 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-24 - ruff check, ruff format --check, pytest `tests -q` (75 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-24 - ruff check, ruff format --check, pytest `tests -q` (76 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,7 +29,7 @@ Phase: 5
 
 ## Next Task
 
-none - implementation task graph complete through T16.
+none - implementation task graph complete through T17.
 
 For future changes, read:
 
@@ -156,6 +156,10 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   removed referrals/reschedule/contact from the primary menu, corrected
   referral copy grammar, separated booking confirmation copy from the active
   booking view, and added a `Главное меню` return action.
+- 2026-06-24 - T17 Client Flow Consistency Cleanup: shortened the `/start`
+  greeting to avoid stylist branding, price, and duration on the first screen;
+  expanded `О мастере`, coloring, consultation, no-active-booking, cancellation,
+  and reschedule follow-ups so service choices and main menu remain reachable.
 
 ## Completed Bootstrap Work
 
@@ -183,8 +187,10 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   One Telegram client cannot hold more than 2 active haircut bookings on the
   same date through self-booking.
 - Primary client menu is intentionally limited to `Стрижка`, `Окрашивание`,
-  `Консультация`, `Моя запись`, and `О мастере`; referral access is shown after
-  booking and inside the active booking flow.
+  `Консультация`, `Моя запись`, and `О мастере`; the first greeting does not
+  show haircut price/duration, referral access is shown after booking and inside
+  the active booking flow, and secondary screens keep service/main-menu
+  navigation available.
 
 ## Instructions For Codex
 
