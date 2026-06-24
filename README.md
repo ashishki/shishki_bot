@@ -5,10 +5,9 @@ bot for one stylist.
 
 ## Current Status
 
-- Phase 5 is complete. T15 is complete: clients choose haircut, coloring, or
-  consultation first; haircut leads to date/time slots, coloring and
-  consultation route to stylist chat, and same-day haircut self-booking is
-  capped per client.
+- Phase 5 is complete. T16 is complete: the client start screen is simplified,
+  referrals are shown after booking/in active-booking flows, and booking copy
+  is separated from the active booking management screen.
 - Next task: none in the current task graph.
 - Cycle 9 T13 deployment/operator review findings were closed.
 - Production v1 remains deterministic: no production LLM behavior or external

@@ -19,17 +19,17 @@ change notifications, and lightweight business statistics.
 
 ## Feature 1 - Client Main Menu
 
-Description: The client receives a clear Telegram menu with service choices,
-booking management, stylist information, referral link access, and contact
-paths.
+Description: The client receives a clear Telegram menu with primary service
+choices, active booking access, and stylist information. Secondary actions such
+as referrals appear after booking or inside the active booking flow.
 
 Acceptance criteria:
 
 1. Client can open `/start` and see concise welcome text plus buttons.
 2. Welcome text states haircut duration, haircut price, and that coloring and
    consultation continue through personal chat.
-3. Menu includes haircut, coloring, consultation, about master, referrals, my
-   booking, reschedule/cancel, and contact options.
+3. Menu includes haircut, coloring, consultation, my booking, and about master
+   options.
 4. Unknown input returns the main menu without creating a booking.
 
 Out of scope for v1: multilingual copy and rich media onboarding.

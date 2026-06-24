@@ -47,7 +47,8 @@ def test_confirmation_message_contains_required_fields() -> None:
     assert "Test studio" in message
     assert "60 мин" in message
     assert "90 GEL" in message
-    assert "перенести или отменить" in message
+    assert "Если нужно изменить запись" in message
+    assert "Моя запись" in message
 
 
 def test_messages_use_business_timezone() -> None:

@@ -42,7 +42,6 @@ from app.services.booking import (
 )
 from app.services.referrals import (
     REFERRAL_BONUS_THRESHOLD,
-    REFERRAL_REWARD_LABEL,
     build_referral_link,
     ensure_referral_code,
     referral_code_from_start_payload,
@@ -54,10 +53,13 @@ HAIRCUT_PRICE_LABEL = str(DEFAULT_HAIRCUT_PRICE).rstrip("0").rstrip(".")
 
 CLIENT_WELCOME_TEXT = "\n".join(
     [
-        "SHISHKI",
-        f"Стрижка: {DEFAULT_HAIRCUT_DURATION_MINUTES} мин, {HAIRCUT_PRICE_LABEL} GEL.",
-        "Окрашивание и консультация — через личный чат.",
-        "Выберите услугу.",
+        "Привет! Я Артём, мастер SHISHKI.",
+        "",
+        "Здесь можно записаться на стрижку или написать мне "
+        "по окрашиванию/консультации.",
+        "",
+        f"Стрижка — {DEFAULT_HAIRCUT_DURATION_MINUTES} мин, {HAIRCUT_PRICE_LABEL} GEL.",
+        "Что хотите сделать?",
     ]
 )
 NO_AVAILABLE_SLOTS_TEXT = "Свободных дат пока нет."
@@ -65,6 +67,8 @@ HAIRCUT_DATE_LIST_TEXT = "Выберите дату для стрижки."
 HAIRCUT_SLOT_LIST_TEXT = "Выберите время:"
 HAIRCUT_CONFIRM_TEXT = "Подтвердить запись?"
 NO_ACTIVE_BOOKING_TEXT = "У вас пока нет активной записи."
+ACTIVE_BOOKING_HEADER_TEXT = "Ваша запись:"
+ACTIVE_BOOKING_ACTION_TEXT = "Что хотите сделать?"
 CHANGE_BOOKING_DATE_TEXT = "Выберите новую дату."
 CANCEL_BOOKING_CONFIRM_TEXT = "Точно отменить эту запись?"
 SLOT_UNAVAILABLE_TEXT = "Это время уже недоступно. Выберите другое."
@@ -256,7 +260,11 @@ def handle_haircut_booking_confirmation(
             **_settings_location_links(settings),
         ),
         booking=booking,
-        buttons=(_my_booking_button(), _referral_program_button(), _dates_button()),
+        buttons=(
+            _my_booking_button(),
+            _referral_program_button(),
+            _dates_button(label="Записаться еще"),
+        ),
     )
 
 
@@ -294,14 +302,19 @@ def handle_referral_program_request(
                 link,
                 "",
                 f"За {REFERRAL_BONUS_THRESHOLD} новых клиентов, которые пришли "
-                f"по вашей ссылке и дошли до визита, я подарю {REFERRAL_REWARD_LABEL}.",
+                "по вашей ссылке и дошли до визита, я подарю вам "
+                "классную профессиональную косметику для волос: уход или стайлинг.",
                 "",
-                f"Засчитано: {progress.qualified_count}/{REFERRAL_BONUS_THRESHOLD}",
+                f"Засчитано: {progress.qualified_count} из {REFERRAL_BONUS_THRESHOLD}",
                 f"Ожидают визита: {progress.pending_count}",
                 f"Бонусов к выдаче: {progress.pending_bonus_count}",
             ]
         ),
-        buttons=(_dates_button(label="Записаться"), _my_booking_button()),
+        buttons=(
+            _my_booking_button(),
+            _dates_button(label="Стрижка"),
+            _main_menu_button(),
+        ),
     )
 
 
@@ -412,6 +425,10 @@ def handle_client_callback_payload(
         parsed = parse_client_callback_data(callback_payload)
     except ValueError:
         return ClientCallbackResponse(text=UNKNOWN_ACTION_TEXT)
+
+    if parsed.action == ClientMenuAction.MENU:
+        response = handle_start_command(settings)
+        return ClientCallbackResponse(text=response.text, buttons=response.buttons)
 
     if parsed.action == ClientMenuAction.COMPLEX_SERVICE:
         response = handle_complex_service_redirect(settings)
@@ -704,21 +721,30 @@ def handle_active_booking_view(
     if booking is None:
         return ClientTextResponse(
             text=NO_ACTIVE_BOOKING_TEXT,
-            buttons=(_dates_button(),),
+            buttons=(_dates_button(label="Стрижка"), _main_menu_button()),
         )
 
+    booking_text = booking_confirmation_message(
+        booking,
+        timezone=settings.timezone_info,
+        include_change_hint=False,
+        **_settings_location_links(settings),
+    ).replace("Запись подтверждена\n\n", "")
     return ClientTextResponse(
-        text="Ваша активная запись\n"
-        + booking_confirmation_message(
-            booking,
-            timezone=settings.timezone_info,
-            **_settings_location_links(settings),
+        text="\n".join(
+            [
+                ACTIVE_BOOKING_HEADER_TEXT,
+                "",
+                booking_text,
+                "",
+                ACTIVE_BOOKING_ACTION_TEXT,
+            ]
         ),
         buttons=(
             _change_booking_button(),
             _cancel_booking_button(),
             _referral_program_button(),
-            _dates_button(),
+            _dates_button(label="Записаться еще"),
         ),
     )
 
@@ -1201,11 +1227,19 @@ def _date_buttons(
     )
 
 
-def _dates_button(*, label: str = "Даты") -> MenuButton:
+def _dates_button(*, label: str = "Стрижка") -> MenuButton:
     return MenuButton(
         action=ClientMenuAction.BOOK_HAIRCUT,
         label=label,
         callback_data=client_callback_data(ClientMenuAction.BOOK_HAIRCUT),
+    )
+
+
+def _main_menu_button(*, label: str = "Главное меню") -> MenuButton:
+    return MenuButton(
+        action=ClientMenuAction.MENU,
+        label=label,
+        callback_data=client_callback_data(ClientMenuAction.MENU),
     )
 
 
@@ -1252,7 +1286,7 @@ def _cancel_booking_button(*, label: str = "Отменить") -> MenuButton:
 def _no_active_booking_response() -> ClientCallbackResponse:
     return ClientCallbackResponse(
         text=NO_ACTIVE_BOOKING_TEXT,
-        buttons=(_dates_button(),),
+        buttons=(_dates_button(label="Стрижка"), _main_menu_button()),
     )
 
 

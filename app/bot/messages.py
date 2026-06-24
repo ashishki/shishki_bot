@@ -19,26 +19,31 @@ def booking_confirmation_message(
     yandex_map_url: str | None = None,
     google_map_url: str | None = None,
     default_map_url: str | None = None,
+    include_change_hint: bool = True,
 ) -> str:
-    return "\n".join(
-        [
-            "Запись подтверждена",
-            "",
-            _html(_service_label(booking.service)),
-            _format_date(booking.starts_at, timezone),
-            _format_time(booking.starts_at, timezone),
-            format_location_line(
-                booking.place,
-                yandex_map_url=yandex_map_url,
-                google_map_url=google_map_url,
-                default_map_url=default_map_url,
-            ),
-            f"{booking.duration_minutes} мин",
-            f"{_format_money(booking.price_amount)} GEL",
-            "",
-            "Запись можно перенести или отменить в разделе «Моя запись».",
-        ]
-    )
+    lines = [
+        "Запись подтверждена",
+        "",
+        _html(_service_label(booking.service)),
+        _format_date(booking.starts_at, timezone),
+        _format_time(booking.starts_at, timezone),
+        format_location_line(
+            booking.place,
+            yandex_map_url=yandex_map_url,
+            google_map_url=google_map_url,
+            default_map_url=default_map_url,
+        ),
+        f"{booking.duration_minutes} мин",
+        f"{_format_money(booking.price_amount)} GEL",
+    ]
+    if include_change_hint:
+        lines.extend(
+            [
+                "",
+                "Если нужно изменить запись, откройте «Моя запись».",
+            ]
+        )
+    return "\n".join(lines)
 
 
 def booking_rescheduled_message(

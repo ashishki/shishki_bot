@@ -31,6 +31,7 @@ class AdminMenuAction(StrEnum):
 
 
 class ClientMenuAction(StrEnum):
+    MENU = "menu"
     BOOK_HAIRCUT = "book_haircut"
     COMPLEX_SERVICE = "complex_service"
     CONSULTATION = "consultation"
@@ -78,11 +79,8 @@ _CLIENT_MENU_LAYOUT: tuple[tuple[ClientMenuAction, str], ...] = (
     (ClientMenuAction.BOOK_HAIRCUT, "Стрижка"),
     (ClientMenuAction.COMPLEX_SERVICE, "Окрашивание"),
     (ClientMenuAction.CONSULTATION, "Консультация"),
-    (ClientMenuAction.ABOUT_MASTER, "О мастере"),
-    (ClientMenuAction.REFERRAL_PROGRAM, "Рекомендации"),
     (ClientMenuAction.MY_BOOKING, "Моя запись"),
-    (ClientMenuAction.RESCHEDULE_CANCEL, "Перенести / отменить"),
-    (ClientMenuAction.CONTACT, "Связаться"),
+    (ClientMenuAction.ABOUT_MASTER, "О мастере"),
 )
 
 

@@ -527,3 +527,41 @@ Context-Refs:
   - docs/spec.md#feature-2---simple-haircut-booking
   - docs/spec.md#feature-3---complex-service-redirect-and-manual-booking
   - docs/IMPLEMENTATION_CONTRACT.md#booking-integrity
+
+## T16: Client UX Copy Cleanup
+
+Owner:      codex
+Phase:      5
+Type:       none
+Depends-On: T15
+Status:     [x] complete
+Completed:  2026-06-24
+
+Objective: |
+  Reduce first-screen overload and make client-facing texts match the actual
+  button state in referral, confirmation, and active-booking flows.
+
+Acceptance-Criteria:
+  - id: AC-1
+    description: "Start menu greets the client and shows only primary service/account actions."
+    test: "tests/test_client_handlers.py::test_start_menu"
+  - id: AC-2
+    description: "Referral screen uses correct Russian grammar and returns to useful next actions."
+    test: "tests/test_client_handlers.py::test_referral_program_response_creates_personal_link"
+  - id: AC-3
+    description: "My booking screen does not repeat the confirmation hint and directly asks what action to take."
+    test: "tests/test_client_handlers.py::test_client_can_view_and_cancel_active_booking"
+  - id: AC-4
+    description: "Booking confirmation hint tells clients where to change the booking without duplicating My Booking copy."
+    test: "tests/test_notifications.py::test_confirmation_message_contains_required_fields"
+
+Files:
+  - app/bot/keyboards.py
+  - app/bot/handlers/client.py
+  - app/bot/messages.py
+  - tests/test_client_handlers.py
+  - tests/test_notifications.py
+
+Context-Refs:
+  - docs/spec.md#feature-1---client-main-menu
+  - docs/spec.md#feature-2---simple-haircut-booking

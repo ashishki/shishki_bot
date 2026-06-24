@@ -8,7 +8,7 @@ Phase: 5
 ## Current State
 
 - Phase: 5
-- Baseline: T15 complete; task graph complete with 75 total tests.
+- Baseline: T16 complete; task graph complete with 75 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
 - Last verification: 2026-06-24 - ruff check, ruff format --check, pytest `tests -q` (75 passed), integrity check, and skill security gate passed.
@@ -29,7 +29,7 @@ Phase: 5
 
 ## Next Task
 
-none - implementation task graph complete through T15.
+none - implementation task graph complete through T16.
 
 For future changes, read:
 
@@ -152,6 +152,10 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   haircut date/slot booking behind the haircut button; routed coloring and
   consultation to stylist chat; and added a 2-active-haircuts-per-day client
   guard.
+- 2026-06-24 - T16 Client UX Copy Cleanup: simplified the first screen,
+  removed referrals/reschedule/contact from the primary menu, corrected
+  referral copy grammar, separated booking confirmation copy from the active
+  booking view, and added a `Главное меню` return action.
 
 ## Completed Bootstrap Work
 
@@ -178,6 +182,9 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   and slots, while `Окрашивание` and `Консультация` route to stylist chat.
   One Telegram client cannot hold more than 2 active haircut bookings on the
   same date through self-booking.
+- Primary client menu is intentionally limited to `Стрижка`, `Окрашивание`,
+  `Консультация`, `Моя запись`, and `О мастере`; referral access is shown after
+  booking and inside the active booking flow.
 
 ## Instructions For Codex
 

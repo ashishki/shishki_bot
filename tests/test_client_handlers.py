@@ -39,25 +39,26 @@ def test_start_menu() -> None:
     response = handle_start_command(_settings())
 
     assert response.text == CLIENT_WELCOME_TEXT
+    assert "Привет" in response.text
+    assert "Артём" in response.text
     assert "Стрижка" in response.text
     assert "60 мин" in response.text
     assert "90 GEL" in response.text
-    assert "Выберите услугу" in response.text
+    assert "Что хотите сделать?" in response.text
     assert tuple(button.action for button in response.buttons) == client_menu_actions()
     assert tuple(button.action for button in response.buttons) == (
         ClientMenuAction.BOOK_HAIRCUT,
         ClientMenuAction.COMPLEX_SERVICE,
         ClientMenuAction.CONSULTATION,
-        ClientMenuAction.ABOUT_MASTER,
-        ClientMenuAction.REFERRAL_PROGRAM,
         ClientMenuAction.MY_BOOKING,
-        ClientMenuAction.RESCHEDULE_CANCEL,
-        ClientMenuAction.CONTACT,
+        ClientMenuAction.ABOUT_MASTER,
     )
-    assert tuple(button.label for button in response.buttons[:3]) == (
+    assert tuple(button.label for button in response.buttons) == (
         "Стрижка",
         "Окрашивание",
         "Консультация",
+        "Моя запись",
+        "О мастере",
     )
     assert handle_unknown_input(_settings()) == response
 
@@ -93,11 +94,12 @@ def test_referral_program_response_creates_personal_link() -> None:
     assert saved_user is not None
     assert saved_user.client is not None
     assert "https://t.me/test_bot?start=ref_" in response.text
-    assert "косметика для волос" in response.text
-    assert "Засчитано: 0/3" in response.text
+    assert "классную профессиональную косметику для волос" in response.text
+    assert "Засчитано: 0 из 3" in response.text
     assert tuple(button.action for button in response.buttons) == (
-        ClientMenuAction.BOOK_HAIRCUT,
         ClientMenuAction.MY_BOOKING,
+        ClientMenuAction.BOOK_HAIRCUT,
+        ClientMenuAction.MENU,
     )
 
 
@@ -247,7 +249,7 @@ def test_client_callback_requires_confirmation_before_booking() -> None:
             ClientMenuAction.REFERRAL_PROGRAM,
             ClientMenuAction.BOOK_HAIRCUT,
         )
-        assert booked.buttons[2].label == "Даты"
+        assert booked.buttons[2].label == "Записаться еще"
         session.commit()
 
         booking = session.scalar(select(Booking))
@@ -388,13 +390,16 @@ def test_client_can_view_and_cancel_active_booking() -> None:
             telegram_user_id=555,
             now=now,
         )
-        assert "Ваша активная запись" in my_booking.text
+        assert "Ваша запись:" in my_booking.text
+        assert "Что хотите сделать?" in my_booking.text
+        assert "Если нужно изменить запись" not in my_booking.text
         assert tuple(button.action for button in my_booking.buttons) == (
             ClientMenuAction.CHANGE_BOOKING,
             ClientMenuAction.CANCEL_BOOKING,
             ClientMenuAction.REFERRAL_PROGRAM,
             ClientMenuAction.BOOK_HAIRCUT,
         )
+        assert my_booking.buttons[-1].label == "Записаться еще"
 
         cancel_prompt = handle_client_callback_payload(
             session,
@@ -544,7 +549,7 @@ def test_active_booking_view_ignores_past_bookings() -> None:
             now=now,
         )
 
-    assert "Ваша активная запись" in response.text
+    assert "Ваша запись:" in response.text
     assert future_starts_at.strftime("%H:%M") in response.text
     assert past_starts_at.strftime("%H:%M") not in response.text
 

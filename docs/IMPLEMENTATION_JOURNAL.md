@@ -288,3 +288,12 @@ Status: append-only
 - Evidence collected: ruff check; ruff format --check; full pytest passed with 75 tests; integrity check; skill security gate.
 - Follow-ups: Consider stronger anti-abuse controls after live testing, such as total active booking limits, cooldown after repeated cancellations, admin approval for suspicious users, or deposits for new clients.
 - Notes: No schema change. The guard blocks more than 2 active self-booked haircuts on one business date for a Telegram client; admin manual bookings remain operator-controlled.
+
+### 2026-06-24 - T16 - Client UX Copy Cleanup
+
+- Scope: `app/bot/keyboards.py`, `app/bot/handlers/client.py`, `app/bot/messages.py`, `tests/test_client_handlers.py`, `tests/test_notifications.py`, and handoff docs.
+- Why: The first client screen was overloaded, referral next actions felt out of context, and the active booking screen repeated a confirmation hint even though action buttons were already visible.
+- Decisions applied: `D-002`, `D-003`
+- Evidence collected: ruff check; ruff format --check; full pytest passed with 75 tests; integrity check; skill security gate.
+- Follow-ups: Test the live `/start`, referral, and `Моя запись` paths in Telegram for copy fit and button order.
+- Notes: No schema change. Main menu now focuses on service/account choices only; referral entry points remain after booking and from active booking.
