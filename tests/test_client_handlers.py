@@ -19,6 +19,7 @@ from app.bot.handlers.client import (
     handle_haircut_booking_start,
     handle_haircut_date_selection,
     handle_haircut_slot_selection,
+    handle_referral_program_request,
     handle_start_command,
     handle_unknown_input,
 )
@@ -45,6 +46,7 @@ def test_start_menu() -> None:
         ClientMenuAction.BOOK_HAIRCUT,
         ClientMenuAction.COMPLEX_SERVICE,
         ClientMenuAction.ABOUT_MASTER,
+        ClientMenuAction.REFERRAL_PROGRAM,
         ClientMenuAction.MY_BOOKING,
         ClientMenuAction.RESCHEDULE_CANCEL,
         ClientMenuAction.CONTACT,
@@ -60,6 +62,34 @@ def test_about_master_response() -> None:
     assert tuple(button.action for button in response.buttons) == (
         ClientMenuAction.BOOK_HAIRCUT,
         ClientMenuAction.CONTACT,
+    )
+
+
+def test_referral_program_response_creates_personal_link() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    with Session(engine, expire_on_commit=False) as session:
+        response = handle_referral_program_request(
+            session,
+            _settings(),
+            telegram_user_id=555,
+            display_name="Test Client",
+            username="test_client",
+            bot_username="test_bot",
+        )
+        session.commit()
+
+        saved_user = session.scalar(select(User).where(User.telegram_id == 555))
+
+    assert saved_user is not None
+    assert saved_user.client is not None
+    assert "https://t.me/test_bot?start=ref_" in response.text
+    assert "косметика для волос" in response.text
+    assert "Засчитано: 0/3" in response.text
+    assert tuple(button.action for button in response.buttons) == (
+        ClientMenuAction.BOOK_HAIRCUT,
+        ClientMenuAction.MY_BOOKING,
     )
 
 
@@ -205,9 +235,10 @@ def test_client_callback_requires_confirmation_before_booking() -> None:
         assert booked.should_commit
         assert tuple(button.action for button in booked.buttons) == (
             ClientMenuAction.MY_BOOKING,
+            ClientMenuAction.REFERRAL_PROGRAM,
             ClientMenuAction.BOOK_HAIRCUT,
         )
-        assert booked.buttons[1].label == "Даты"
+        assert booked.buttons[2].label == "Даты"
         session.commit()
 
         booking = session.scalar(select(Booking))
@@ -276,7 +307,7 @@ async def test_async_callback_dispatch_commits_only_confirmation() -> None:
         now=now,
     )
     assert booked_response.should_commit
-    assert len(booked_response.buttons) == 2
+    assert len(booked_response.buttons) == 3
 
     async with session_factory() as async_session:
         booking = await async_session.run_sync(
@@ -313,6 +344,7 @@ def test_client_can_view_and_cancel_active_booking() -> None:
         assert tuple(button.action for button in my_booking.buttons) == (
             ClientMenuAction.CHANGE_BOOKING,
             ClientMenuAction.CANCEL_BOOKING,
+            ClientMenuAction.REFERRAL_PROGRAM,
             ClientMenuAction.BOOK_HAIRCUT,
         )
 

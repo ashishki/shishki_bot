@@ -90,6 +90,9 @@ def complete_booking(
             )
         session.flush()
 
+    from app.services.referrals import qualify_referral_for_booking
+
+    qualify_referral_for_booking(session, booking=booking)
     return booking
 
 

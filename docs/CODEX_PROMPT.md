@@ -8,10 +8,10 @@ Phase: 5
 ## Current State
 
 - Phase: 5
-- Baseline: T13 complete; task graph complete with 56 total tests.
+- Baseline: T14 complete; task graph complete with 73 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-24 - ruff check, ruff format --check, pytest `tests -q` (67 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-24 - ruff check, ruff format --check, pytest `tests -q` (73 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,7 +29,7 @@ Phase: 5
 
 ## Next Task
 
-none - implementation task graph complete through T13.
+none - implementation task graph complete through T14.
 
 For future changes, read:
 
@@ -143,6 +143,10 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
 - 2026-06-23 - T13 Deployment And Operator Guide: documented local setup,
   environment variables, schema initialization, bot startup, admin operations,
   safe testing, backup, restore, rollback, and deployment notes.
+- 2026-06-24 - T14 Referral Tracking And Bonuses: added client personal
+  referral links, deep-link source capture, completed-visit qualification,
+  admin client-card progress, pending cosmetics/styling bonuses, awarded-state
+  handling, and one-time admin bonus reminders.
 
 ## Completed Bootstrap Work
 
@@ -161,6 +165,10 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   current systemd service has been restarted on the updated code.
 - Client menu includes an `О мастере` option that sends `IMG_9385.PNG` with
   the text from `about_me.md` and follow-up buttons for booking/contact.
+- Client menu includes `Рекомендации`; personal deep links are recorded through
+  `/start ref_<code>`, qualified after completed visits, and every 3 qualified
+  referrals creates a pending professional hair cosmetics/styling bonus for
+  admin follow-up.
 
 ## Instructions For Codex
 

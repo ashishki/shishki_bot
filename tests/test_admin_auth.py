@@ -72,6 +72,7 @@ def test_admin_menu_actions() -> None:
         AdminMenuAction.CANCEL_BOOKING,
         AdminMenuAction.REVENUE,
         AdminMenuAction.CLIENTS,
+        AdminMenuAction.REFERRAL_BONUSES,
     )
 
     assert admin_menu_actions() == expected_actions
@@ -86,6 +87,7 @@ def test_admin_menu_actions() -> None:
         "Отменить запись",
         "Выручка",
         "Клиенты",
+        "Бонусы",
     )
     assert tuple(button.callback_data for button in response.buttons) == tuple(
         admin_callback_data(action) for action in expected_actions

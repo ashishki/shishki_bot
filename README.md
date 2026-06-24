@@ -5,9 +5,9 @@ bot for one stylist.
 
 ## Current Status
 
-- Phase 5 is complete. T13 is complete: deployment and operator docs are in
-  place, including setup, environment variables, schema initialization, bot
-  startup, backup, rollback, and no-real-client-test rules.
+- Phase 5 is complete. T14 is complete: clients can get personal referral
+  links, referrals are qualified after completed visits, and admins see pending
+  cosmetics/styling bonuses.
 - Next task: none in the current task graph.
 - Cycle 9 T13 deployment/operator review findings were closed.
 - Production v1 remains deterministic: no production LLM behavior or external
@@ -122,11 +122,12 @@ The current runtime starts aiogram polling. Deployment and operator notes live i
 - `app/bot/handlers/` - Telegram handler modules for admin and client flows.
 - `app/bot/keyboards.py` - reusable bot menu and callback payload definitions.
 - `app/db/models.py` - SQLAlchemy models for users, clients, slots, bookings,
-  status history, notifications, reminders, and expenses.
+  status history, notifications, reminders, expenses, referrals, and bonuses.
 - `app/db/session.py` - async engine/session helpers.
-- `app/scheduler.py` - reminder recovery and runtime delivery scheduler.
-- `app/services/` - booking, notification, reminder, finance, and client history
-  services.
+- `app/scheduler.py` - reminder recovery, runtime delivery, and referral-bonus
+  admin reminder scheduler.
+- `app/services/` - booking, notification, reminder, finance, client history,
+  and referral services.
 - `tests/` - smoke, model, service, notification, and handler tests.
 
 ## Workflow

@@ -20,6 +20,8 @@ class AdminMenuAction(StrEnum):
     CLIENTS = "clients"
     CLIENT_CARD = "client_card"
     CONTACT_CLIENT = "contact_client"
+    REFERRAL_BONUSES = "referral_bonuses"
+    MARK_REFERRAL_BONUS_AWARDED = "mark_referral_bonus_awarded"
     SCHEDULE_DATE = "schedule_date"
     BOOKING_DETAIL = "booking_detail"
     RESCHEDULE_DATE = "reschedule_date"
@@ -32,6 +34,7 @@ class ClientMenuAction(StrEnum):
     BOOK_HAIRCUT = "book_haircut"
     COMPLEX_SERVICE = "complex_service"
     ABOUT_MASTER = "about_master"
+    REFERRAL_PROGRAM = "referral_program"
     MY_BOOKING = "my_booking"
     RESCHEDULE_CANCEL = "reschedule_cancel"
     CONTACT = "contact"
@@ -67,12 +70,14 @@ _ADMIN_MENU_LAYOUT: tuple[tuple[AdminMenuAction, str], ...] = (
     (AdminMenuAction.CANCEL_BOOKING, "Отменить запись"),
     (AdminMenuAction.REVENUE, "Выручка"),
     (AdminMenuAction.CLIENTS, "Клиенты"),
+    (AdminMenuAction.REFERRAL_BONUSES, "Бонусы"),
 )
 
 _CLIENT_MENU_LAYOUT: tuple[tuple[ClientMenuAction, str], ...] = (
     (ClientMenuAction.BOOK_HAIRCUT, "Записаться"),
     (ClientMenuAction.COMPLEX_SERVICE, "Окрашивание / сложная услуга"),
     (ClientMenuAction.ABOUT_MASTER, "О мастере"),
+    (ClientMenuAction.REFERRAL_PROGRAM, "Рекомендации"),
     (ClientMenuAction.MY_BOOKING, "Моя запись"),
     (ClientMenuAction.RESCHEDULE_CANCEL, "Перенести / отменить"),
     (ClientMenuAction.CONTACT, "Связаться"),

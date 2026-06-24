@@ -33,6 +33,7 @@ from app.db.models import (
     Client,
     DeliveryStatus,
     NotificationLog,
+    ReferralBonusStatus,
     Slot,
     User,
 )
@@ -51,6 +52,12 @@ from app.services.finance import (
     weekly_revenue_summary,
 )
 from app.services.notifications import NotificationSender, send_client_notification
+from app.services.referrals import (
+    REFERRAL_BONUS_THRESHOLD,
+    mark_referral_bonus_awarded,
+    pending_referral_bonuses,
+    referral_progress,
+)
 
 ADMIN_MENU_TEXT = "Админ-меню"
 ADMIN_ACCESS_DENIED_TEXT = "Нет доступа к админке"
@@ -60,6 +67,7 @@ CLIENT_NOT_FOUND_TEXT = "Клиент не найден."
 NO_BOOKINGS_TEXT = "На эту дату записей пока нет."
 BOOKING_NOT_FOUND_TEXT = "Запись не найдена."
 NO_AVAILABLE_SLOTS_TEXT = "Свободных слотов пока нет."
+NO_REFERRAL_BONUSES_TEXT = "Бонусов к выдаче пока нет."
 
 
 class AdminAccessDenied(PermissionError):
@@ -420,6 +428,18 @@ def handle_admin_client_card_view(
     if client.notes:
         lines.append(f"Заметки: {_html(client.notes)}")
 
+    progress = referral_progress(session, client_id=client.id)
+    lines.append("")
+    lines.append("Рекомендации:")
+    if progress.code:
+        lines.append(f"Код: {_html(progress.code)}")
+    else:
+        lines.append("Код: клиент еще не запрашивал ссылку")
+    lines.append(f"Засчитано: {progress.qualified_count}/{REFERRAL_BONUS_THRESHOLD}")
+    lines.append(f"Ожидают визита: {progress.pending_count}")
+    lines.append(f"Бонусов к выдаче: {progress.pending_bonus_count}")
+    lines.append(f"Бонусов выдано: {progress.awarded_bonus_count}")
+
     lines.append("")
     lines.append("Текущая запись:")
     if active_bookings:
@@ -439,8 +459,103 @@ def handle_admin_client_card_view(
     buttons = []
     if contact_url:
         buttons.append(AdminRuntimeButton(label="Открыть чат", url=contact_url))
+    if progress.pending_bonus_count:
+        buttons.append(
+            AdminRuntimeButton(
+                label="Бонусы",
+                callback_data=admin_callback_data(AdminMenuAction.REFERRAL_BONUSES),
+            )
+        )
     buttons.extend((_clients_button(), _admin_menu_button()))
     return AdminRuntimeResponse(text="\n".join(lines), buttons=tuple(buttons))
+
+
+def handle_admin_referral_bonuses(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    bonuses = pending_referral_bonuses(session)
+    if not bonuses:
+        return AdminRuntimeResponse(
+            text=NO_REFERRAL_BONUSES_TEXT,
+            buttons=(_admin_menu_button(),),
+        )
+
+    lines = ["Бонусы к выдаче"]
+    buttons: list[AdminRuntimeButton] = []
+    for bonus in bonuses:
+        client = bonus.client
+        lines.extend(
+            [
+                "",
+                f"#{bonus.id} {_html(_client_display_name(client))}",
+                f"Клиент ID: {client.id}",
+                f"Засчитано рекомендаций: {bonus.referral_count}",
+                f"Подарок: {_html(bonus.reward_label)}",
+            ]
+        )
+        buttons.append(
+            AdminRuntimeButton(
+                label=f"Выдано #{bonus.id}",
+                callback_data=admin_callback_data(
+                    AdminMenuAction.MARK_REFERRAL_BONUS_AWARDED,
+                    bonus.id,
+                ),
+            )
+        )
+        buttons.append(
+            AdminRuntimeButton(
+                label=f"Клиент #{client.id}",
+                callback_data=admin_callback_data(
+                    AdminMenuAction.CLIENT_CARD,
+                    client.id,
+                ),
+            )
+        )
+
+    buttons.append(_admin_menu_button())
+    return AdminRuntimeResponse(text="\n".join(lines), buttons=tuple(buttons))
+
+
+def handle_admin_mark_referral_bonus_awarded(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    bonus_id: int,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    bonus = mark_referral_bonus_awarded(session, bonus_id=bonus_id)
+    client = bonus.client
+    status = (
+        "выдан" if bonus.status is ReferralBonusStatus.AWARDED else bonus.status.value
+    )
+    return AdminRuntimeResponse(
+        text="\n".join(
+            [
+                f"Бонус #{bonus.id}: {status}",
+                f"Клиент: {_html(_client_display_name(client))} #{client.id}",
+                f"Подарок: {_html(bonus.reward_label)}",
+            ]
+        ),
+        buttons=(
+            AdminRuntimeButton(
+                label="Карточка клиента",
+                callback_data=admin_callback_data(
+                    AdminMenuAction.CLIENT_CARD,
+                    client.id,
+                ),
+            ),
+            AdminRuntimeButton(
+                label="Бонусы",
+                callback_data=admin_callback_data(AdminMenuAction.REFERRAL_BONUSES),
+            ),
+            _admin_menu_button(),
+        ),
+    )
 
 
 def handle_admin_schedule_dates(
@@ -854,6 +969,34 @@ def build_admin_router(
                         client_id=client_id,
                     )
                 )
+        if (
+            async_session_factory is not None
+            and action is AdminMenuAction.REFERRAL_BONUSES
+        ):
+            async with async_session_factory() as async_session:
+                return await async_session.run_sync(
+                    lambda session: handle_admin_referral_bonuses(
+                        session,
+                        settings,
+                        telegram_user_id=telegram_user_id,
+                    )
+                )
+        if (
+            async_session_factory is not None
+            and action is AdminMenuAction.MARK_REFERRAL_BONUS_AWARDED
+        ):
+            bonus_id = _parse_int_value(value)
+            async with async_session_factory() as async_session:
+                response = await async_session.run_sync(
+                    lambda session: handle_admin_mark_referral_bonus_awarded(
+                        session,
+                        settings,
+                        telegram_user_id=telegram_user_id,
+                        bonus_id=bonus_id,
+                    )
+                )
+                await async_session.commit()
+                return response
         if (
             async_session_factory is not None
             and action is AdminMenuAction.RESCHEDULE_DATE

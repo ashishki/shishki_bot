@@ -38,6 +38,15 @@ from app.services.booking import (
     list_available_slots,
     reschedule_booking_by_client,
 )
+from app.services.referrals import (
+    REFERRAL_BONUS_THRESHOLD,
+    REFERRAL_REWARD_LABEL,
+    build_referral_link,
+    ensure_referral_code,
+    referral_code_from_start_payload,
+    referral_progress,
+    register_referral_start,
+)
 
 HAIRCUT_PRICE_LABEL = str(DEFAULT_HAIRCUT_PRICE).rstrip("0").rstrip(".")
 
@@ -59,6 +68,9 @@ SLOT_UNAVAILABLE_TEXT = "Это время уже недоступно. Выбе
 IDENTITY_REQUIRED_TEXT = "Не удалось определить ваш Telegram-профиль."
 UNKNOWN_ACTION_TEXT = "Неизвестное действие."
 BOOKING_UNAVAILABLE_TEXT = "Запись временно недоступна."
+REFERRAL_LINK_UNAVAILABLE_TEXT = (
+    "Ссылка временно недоступна. Попробуйте позже или напишите мастеру."
+)
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ABOUT_MASTER_TEXT_PATH = PROJECT_ROOT / "about_me.md"
 ABOUT_MASTER_PHOTO_PATH = PROJECT_ROOT / "IMG_9385.PNG"
@@ -224,7 +236,89 @@ def handle_haircut_booking_confirmation(
             **_settings_location_links(settings),
         ),
         booking=booking,
-        buttons=(_my_booking_button(), _dates_button()),
+        buttons=(_my_booking_button(), _referral_program_button(), _dates_button()),
+    )
+
+
+def handle_referral_program_request(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    bot_username: str | None,
+    display_name: str | None = None,
+    username: str | None = None,
+) -> ClientTextResponse:
+    if telegram_user_id is None:
+        raise ClientIdentityRequired("Telegram user identity is required")
+    if not bot_username:
+        return ClientTextResponse(
+            text=REFERRAL_LINK_UNAVAILABLE_TEXT,
+            buttons=(_dates_button(), _contact_button()),
+        )
+
+    client = get_or_create_client(
+        session,
+        telegram_user_id=telegram_user_id,
+        display_name=display_name,
+        username=username,
+    )
+    code = ensure_referral_code(session, client_id=client.id)
+    progress = referral_progress(session, client_id=client.id)
+    link = build_referral_link(bot_username=bot_username, code=code.code)
+
+    return ClientTextResponse(
+        text="\n".join(
+            [
+                "Ваша ссылка для рекомендаций:",
+                link,
+                "",
+                f"За {REFERRAL_BONUS_THRESHOLD} новых клиентов, которые пришли "
+                f"по вашей ссылке и дошли до визита, я подарю {REFERRAL_REWARD_LABEL}.",
+                "",
+                f"Засчитано: {progress.qualified_count}/{REFERRAL_BONUS_THRESHOLD}",
+                f"Ожидают визита: {progress.pending_count}",
+                f"Бонусов к выдаче: {progress.pending_bonus_count}",
+            ]
+        ),
+        buttons=(_dates_button(label="Записаться"), _my_booking_button()),
+    )
+
+
+def handle_start_payload(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    display_name: str | None = None,
+    username: str | None = None,
+    start_payload: str | None = None,
+    now: datetime | None = None,
+) -> ClientCallbackResponse:
+    referral_code = referral_code_from_start_payload(start_payload)
+    referral_registered = False
+    if referral_code and telegram_user_id is not None:
+        client = get_or_create_client(
+            session,
+            telegram_user_id=telegram_user_id,
+            display_name=display_name,
+            username=username,
+        )
+        registration = register_referral_start(
+            session,
+            referral_code=referral_code,
+            referred_client_id=client.id,
+        )
+        referral_registered = registration.registered
+
+    response = handle_haircut_booking_start(session, settings, now=now)
+    text = response.text
+    if referral_registered:
+        text = "Рекомендация сохранена.\n\n" + text
+    return ClientCallbackResponse(
+        text=text,
+        buttons=response.buttons,
+        should_commit=referral_registered,
     )
 
 
@@ -291,6 +385,8 @@ def handle_client_callback_payload(
     display_name: str | None = None,
     username: str | None = None,
     now: datetime | None = None,
+    bot_username: str | None = None,
+    start_payload: str | None = None,
 ) -> ClientCallbackResponse:
     try:
         parsed = parse_client_callback_data(callback_payload)
@@ -312,9 +408,35 @@ def handle_client_callback_payload(
     if session is None:
         return ClientCallbackResponse(text=BOOKING_UNAVAILABLE_TEXT)
 
+    if parsed.action == ClientMenuAction.REFERRAL_PROGRAM:
+        try:
+            response = handle_referral_program_request(
+                session,
+                settings,
+                telegram_user_id=telegram_user_id,
+                bot_username=bot_username,
+                display_name=display_name,
+                username=username,
+            )
+        except ClientIdentityRequired:
+            return ClientCallbackResponse(text=IDENTITY_REQUIRED_TEXT)
+        return ClientCallbackResponse(
+            text=response.text,
+            buttons=response.buttons,
+            should_commit=True,
+        )
+
     if parsed.action == ClientMenuAction.BOOK_HAIRCUT:
-        response = handle_haircut_booking_start(session, settings, now=now)
-        return ClientCallbackResponse(text=response.text, buttons=response.buttons)
+        response = handle_start_payload(
+            session,
+            settings,
+            telegram_user_id=telegram_user_id,
+            display_name=display_name,
+            username=username,
+            start_payload=start_payload,
+            now=now,
+        )
+        return response
 
     if parsed.action in (
         ClientMenuAction.MY_BOOKING,
@@ -562,6 +684,7 @@ def handle_active_booking_view(
         buttons=(
             _change_booking_button(),
             _cancel_booking_button(),
+            _referral_program_button(),
             _dates_button(),
         ),
     )
@@ -758,6 +881,8 @@ async def dispatch_client_callback_async(
     display_name: str | None = None,
     username: str | None = None,
     now: datetime | None = None,
+    bot_username: str | None = None,
+    start_payload: str | None = None,
 ) -> ClientCallbackResponse:
     async with async_session_factory() as async_session:
         response = await async_session.run_sync(
@@ -769,6 +894,8 @@ async def dispatch_client_callback_async(
                 display_name=display_name,
                 username=username,
                 now=now,
+                bot_username=bot_username,
+                start_payload=start_payload,
             )
         )
         if response.should_commit:
@@ -806,6 +933,7 @@ def build_client_router(
         ) from exc
 
     router = Router(name="client")
+    resolved_bot_username: str | None = None
 
     @router.message(CommandStart())
     async def start_menu(message: Message) -> None:
@@ -818,11 +946,14 @@ def build_client_router(
             )
             return
 
+        start_payload = _start_payload(message.text)
         response = await _dispatch_payload(
             callback_payload=client_callback_data(ClientMenuAction.BOOK_HAIRCUT),
             telegram_user_id=message.from_user.id if message.from_user else None,
             display_name=message.from_user.full_name if message.from_user else None,
             username=message.from_user.username if message.from_user else None,
+            bot_username=await _bot_username(message.bot),
+            start_payload=start_payload,
         )
         await message.answer(
             response.text,
@@ -863,7 +994,20 @@ def build_client_router(
         )
 
     async def _dispatch_callback(callback: CallbackQuery) -> ClientCallbackResponse:
-        return await _dispatch_payload(**_callback_kwargs(callback))
+        kwargs = _callback_kwargs(callback)
+        kwargs["bot_username"] = await _bot_username(callback.bot)
+        return await _dispatch_payload(**kwargs)
+
+    async def _bot_username(bot) -> str | None:
+        nonlocal resolved_bot_username
+        if resolved_bot_username:
+            return resolved_bot_username
+        try:
+            me = await bot.get_me()
+        except Exception:  # noqa: BLE001 - referral link can degrade gracefully
+            return None
+        resolved_bot_username = me.username
+        return resolved_bot_username
 
     async def _dispatch_payload(**kwargs: object) -> ClientCallbackResponse:
         if async_session_factory is not None:
@@ -949,6 +1093,17 @@ def _is_about_master_callback(payload: str | None) -> bool:
     return parsed.action == ClientMenuAction.ABOUT_MASTER
 
 
+def _start_payload(message_text: str | None) -> str | None:
+    if not message_text:
+        return None
+    parts = message_text.strip().split(maxsplit=1)
+    if len(parts) != 2:
+        return None
+    if not parts[0].startswith("/start"):
+        return None
+    return parts[1].strip() or None
+
+
 def _slot_option(
     slot: Slot,
     settings: Settings,
@@ -1008,6 +1163,14 @@ def _contact_button(*, label: str = "Связаться") -> MenuButton:
         action=ClientMenuAction.CONTACT,
         label=label,
         callback_data=client_callback_data(ClientMenuAction.CONTACT),
+    )
+
+
+def _referral_program_button(*, label: str = "Рекомендации") -> MenuButton:
+    return MenuButton(
+        action=ClientMenuAction.REFERRAL_PROGRAM,
+        label=label,
+        callback_data=client_callback_data(ClientMenuAction.REFERRAL_PROGRAM),
     )
 
 

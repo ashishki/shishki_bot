@@ -18,6 +18,9 @@ from app.db.models import (
     DeliveryStatus,
     ExpenseCategory,
     NotificationLog,
+    Referral,
+    ReferralBonus,
+    ReferralCode,
     ReminderLog,
     Slot,
     User,
@@ -32,6 +35,9 @@ EXPECTED_TABLES = {
     "notification_logs",
     "reminder_logs",
     "booking_expenses",
+    "referral_codes",
+    "referrals",
+    "referral_bonuses",
 }
 
 
@@ -93,8 +99,25 @@ def test_models_create_minimal_booking_graph() -> None:
                 note="synthetic test expense",
             )
         )
+        referral_code = ReferralCode(client=client, code="test-code")
+        referred_client = Client(
+            user=User(telegram_id=456, username="friend"),
+            display_name="Friend",
+        )
+        referral = Referral(
+            referrer=client,
+            referred=referred_client,
+            referral_code=referral_code,
+        )
+        client.referral_bonuses.append(
+            ReferralBonus(
+                referral_count=3,
+                reward_label="test reward",
+            )
+        )
 
         session.add(booking)
+        session.add(referral)
         session.commit()
 
         saved_booking = session.scalar(select(Booking))
@@ -107,6 +130,9 @@ def test_models_create_minimal_booking_graph() -> None:
     assert len(saved_booking.notification_logs) == 1
     assert len(saved_booking.reminder_logs) == 1
     assert len(saved_booking.expenses) == 1
+    assert saved_booking.client.referral_code is not None
+    assert len(saved_booking.client.sent_referrals) == 1
+    assert len(saved_booking.client.referral_bonuses) == 1
 
 
 def test_booking_status_enum_matches_architecture() -> None:

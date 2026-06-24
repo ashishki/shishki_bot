@@ -270,3 +270,12 @@ Status: append-only
 - Evidence collected: fresh pull from `main`; ruff check; ruff format --check; full pytest passed with 67 tests; integrity check; skill security gate; `shishki-bot.service` restarted and active.
 - Follow-ups: Referral mechanics should start as a manual/text offer before adding tracking automation.
 - Notes: The about card sends the profile photo with the pulled markdown text as the caption and gives booking/contact buttons.
+
+### 2026-06-24 - T14 - Referral Tracking And Bonuses
+
+- Scope: `app/db/models.py`, `app/services/referrals.py`, `app/services/finance.py`, `app/bot/keyboards.py`, `app/bot/handlers/client.py`, `app/bot/handlers/admin.py`, `app/scheduler.py`, `tests/test_referrals.py`, client/admin/model tests, and operator docs.
+- Why: Clients need a personal referral link, and the stylist needs automatic referral attribution plus reminders when a cosmetics/styling bonus is earned.
+- Decisions applied: `D-002`, `D-003`, `D-004`
+- Evidence collected: ruff check; ruff format --check; full pytest passed with 73 tests; integrity check; skill security gate.
+- Follow-ups: Monitor the first live referral deep-link flow and the first pending bonus notification in systemd logs.
+- Notes: Schema change is additive only: `referral_codes`, `referrals`, and `referral_bonuses`. Fresh backup is required before applying `create_all` to an existing live database; rollback is app rollback plus optional explicit dropping of the new referral tables if referral data can be discarded.

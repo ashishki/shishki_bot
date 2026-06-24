@@ -23,6 +23,7 @@ The admin menu exposes:
 - Cancel booking
 - Revenue
 - Clients
+- Бонусы
 
 The code also provides tested service/admin wrapper behavior for:
 
@@ -34,6 +35,20 @@ The code also provides tested service/admin wrapper behavior for:
 - Completing bookings with final amount and recorded expenses.
 - Viewing weekly gross/net revenue from completed bookings only.
 - Viewing client cards and visit history from completed bookings only.
+- Viewing referral progress on client cards.
+- Viewing referral bonuses and marking a cosmetics/styling bonus as awarded.
+
+## Referral Bonuses
+
+Clients can request a personal referral link from the bot. When a new client
+enters through that link, the source is recorded. The referral is counted only
+after the referred client's booking is completed.
+
+Every 3 qualified referrals creates a pending bonus for professional hair
+cosmetics: care or styling. The scheduler sends the admin a one-time Telegram
+reminder for a newly pending bonus. Open `/admin` -> `Бонусы` to see pending
+bonuses, contact/open the client card if needed, and press `Выдано` after the
+product is given.
 
 ## Safe Operation Rules
 
@@ -45,6 +60,8 @@ The code also provides tested service/admin wrapper behavior for:
   notifications.
 - Revenue and client spending must use completed bookings and recorded final
   amounts only.
+- Referral rewards must be marked awarded only after the cosmetics/styling
+  product is actually given.
 
 ## Backup
 

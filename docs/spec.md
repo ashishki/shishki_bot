@@ -131,3 +131,26 @@ Acceptance criteria:
 5. Production deployment has documented backup and rollback notes before real client use.
 
 Out of scope for v1: high availability and multi-region deployment.
+
+## Feature 9 - Referral Program
+
+Description: Clients can share a personal Telegram deep link. The bot records
+new clients who first enter through that link and qualifies the referral after
+the referred client's appointment is completed.
+
+Acceptance criteria:
+
+1. Client can request a personal referral link from the bot.
+2. `/start ref_<code>` records the referrer for a new client before booking.
+3. Self-referrals and clients with existing bookings are ignored.
+4. A referral becomes qualified only after a completed booking.
+5. Every 3 qualified referrals creates an admin-visible pending bonus.
+6. Admin receives a one-time reminder for a newly earned bonus.
+7. Client cards show referral code/progress, pending referred clients, pending
+   bonuses, and awarded bonuses.
+
+Reward positioning: professional hair cosmetics, either care or styling,
+instead of a haircut discount.
+
+Out of scope for this iteration: payment/refund logic, public leaderboards, and
+automatic product inventory management.

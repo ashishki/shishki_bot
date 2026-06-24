@@ -135,10 +135,10 @@ new value, and reason/note when provided.
 | Client handlers | `app/bot/handlers/client.py` | Client menus, booking flow, booking view, cancel/reschedule request flow. |
 | Admin handlers | `app/bot/handlers/admin.py` | Admin menu, slot management, manual bookings, edits, stats, client cards. |
 | Message templates | `app/bot/messages.py` | Confirmation, reminder, reschedule, cancellation, admin notifications. |
-| Services | `app/services/` | Booking, notification, reminder, finance, client history business logic. |
-| Database models | `app/db/models.py` | Users, clients, slots, bookings, status history, expenses, notification/reminder logs. |
+| Services | `app/services/` | Booking, notification, reminder, finance, client history, and referral business logic. |
+| Database models | `app/db/models.py` | Users, clients, slots, bookings, status history, expenses, notification/reminder logs, referral codes, referrals, and referral bonuses. |
 | Database session | `app/db/session.py` | Engine/session setup and transaction boundary helpers. |
-| Scheduler | `app/scheduler.py` | Restart-safe reminder scheduling/recovery from database. |
+| Scheduler | `app/scheduler.py` | Restart-safe booking reminder scheduling/recovery and one-time admin referral-bonus reminders. |
 | Tests | `tests/` | Unit and integration tests for core flows. |
 
 ## Data Flow
@@ -155,6 +155,11 @@ new value, and reason/note when provided.
    optional expenses.
 9. Finance/client services calculate weekly revenue and client history from
    stored completed bookings.
+10. If the completed client came through a referral link, the referral is
+    qualified; every 3 qualified referrals creates a pending admin bonus for
+    professional hair cosmetics.
+11. The scheduler sends a one-time admin reminder for newly pending referral
+    bonuses, and admin can mark the bonus as awarded.
 
 ## Tech Stack
 

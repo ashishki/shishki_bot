@@ -440,3 +440,51 @@ Files:
 Context-Refs:
   - docs/ARCHITECTURE.md#runtime-model
   - docs/spec.md#feature-8---operations-and-reliability
+
+## T14: Referral Tracking And Bonuses
+
+Owner:      codex
+Phase:      5
+Type:       none
+Depends-On: T08 T11 T12 T13
+Status:     [x] complete
+Completed:  2026-06-24
+
+Objective: |
+  Add automatic referral tracking with client personal links, admin-visible
+  referral progress, and pending cosmetics/styling bonus reminders.
+
+Acceptance-Criteria:
+  - id: AC-1
+    description: "Client can request a personal referral link."
+    test: "tests/test_client_handlers.py::test_referral_program_response_creates_personal_link"
+  - id: AC-2
+    description: "Deep-link start payload records a referral for a new client before booking."
+    test: "tests/test_referrals.py::test_client_start_payload_records_referral_before_booking"
+  - id: AC-3
+    description: "Referral bonus is created after 3 completed referred-client visits."
+    test: "tests/test_referrals.py::test_referral_qualifies_bonus_after_three_completed_referred_visits"
+  - id: AC-4
+    description: "Admin can view pending bonuses and mark a bonus as awarded."
+    test: "tests/test_referrals.py::test_admin_card_bonus_list_and_award_action"
+  - id: AC-5
+    description: "Scheduler sends one admin reminder for newly pending referral bonuses."
+    test: "tests/test_referrals.py::test_scheduler_sends_referral_bonus_reminder_once"
+
+Files:
+  - app/db/models.py
+  - app/services/referrals.py
+  - app/services/finance.py
+  - app/bot/keyboards.py
+  - app/bot/handlers/client.py
+  - app/bot/handlers/admin.py
+  - app/scheduler.py
+  - tests/test_referrals.py
+  - tests/test_client_handlers.py
+  - tests/test_admin_auth.py
+  - tests/test_models.py
+
+Context-Refs:
+  - docs/spec.md#feature-9---referral-program
+  - docs/IMPLEMENTATION_CONTRACT.md#admin-authorization
+  - docs/IMPLEMENTATION_CONTRACT.md#financial-calculations

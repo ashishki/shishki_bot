@@ -17,6 +17,11 @@ from app.bot.messages import booking_reminder_message
 from app.config import Settings
 from app.db.models import ReminderLog
 from app.services.notifications import NotificationSender
+from app.services.referrals import (
+    mark_referral_bonus_notified,
+    pending_referral_bonus_notifications,
+    referral_bonus_admin_message,
+)
 from app.services.reminders import (
     rebuild_reminder_logs,
     recover_pending_reminders,
@@ -111,6 +116,17 @@ def start_reminder_scheduler(
         max_instances=1,
         next_run_time=datetime.now(UTC),
     )
+    scheduler.add_job(
+        send_pending_referral_bonus_reminders,
+        "interval",
+        seconds=interval_seconds,
+        args=(session_factory, settings, sender),
+        id="send_pending_referral_bonus_reminders",
+        replace_existing=True,
+        coalesce=True,
+        max_instances=1,
+        next_run_time=datetime.now(UTC),
+    )
     scheduler.start()
     return scheduler
 
@@ -137,6 +153,36 @@ def send_due_reminders(
                 sent_or_attempted.append(reminder.id)
         session.commit()
     return tuple(sent_or_attempted)
+
+
+def send_pending_referral_bonus_reminders(
+    session_factory: Callable[[], Session],
+    settings: Settings,
+    sender: NotificationSender,
+    *,
+    now: datetime | None = None,
+) -> tuple[int, ...]:
+    notified: list[int] = []
+    with session_factory() as session:
+        bonuses = pending_referral_bonus_notifications(session)
+        for bonus in bonuses:
+            text = referral_bonus_admin_message(bonus)
+            sent_to_admin = False
+            for admin_telegram_id in settings.admin_telegram_ids:
+                try:
+                    sender.send_message(admin_telegram_id, text)
+                except Exception:  # noqa: BLE001 - keep pending for retry
+                    continue
+                sent_to_admin = True
+            if sent_to_admin and bonus.id is not None:
+                mark_referral_bonus_notified(
+                    session,
+                    bonus_id=bonus.id,
+                    notified_at=now,
+                )
+                notified.append(bonus.id)
+        session.commit()
+    return tuple(notified)
 
 
 def _as_utc(value: datetime) -> datetime:

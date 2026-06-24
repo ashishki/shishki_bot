@@ -138,6 +138,13 @@ This is a non-destructive table creation helper for the current v1 schema. Any
 future production data migration must have an explicit task, backup note, and
 rollback note before it is run.
 
+For T14 referral tracking, the schema change is additive: `referral_codes`,
+`referrals`, and `referral_bonuses` are new tables. On an existing database,
+make a fresh backup first, then run the same `create_all` helper to create only
+missing tables. Rollback is application rollback plus dropping these new tables
+only if the operator explicitly decides referral data created after the rollout
+can be discarded.
+
 ## Backup Plan
 
 Production must have a backup path before real client use.

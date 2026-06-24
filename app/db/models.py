@@ -54,6 +54,16 @@ class ExpenseCategory(StrEnum):
     OTHER = "other"
 
 
+class ReferralStatus(StrEnum):
+    PENDING = "pending"
+    QUALIFIED = "qualified"
+
+
+class ReferralBonusStatus(StrEnum):
+    PENDING = "pending"
+    AWARDED = "awarded"
+
+
 def enum_column(enum_type: type[StrEnum], name: str) -> SAEnum:
     return SAEnum(
         enum_type,
@@ -100,6 +110,22 @@ class Client(Base):
     bookings: Mapped[list[Booking]] = relationship(back_populates="client")
     notification_logs: Mapped[list[NotificationLog]] = relationship(
         back_populates="client"
+    )
+    referral_code: Mapped[ReferralCode | None] = relationship(
+        back_populates="client",
+        cascade="all, delete-orphan",
+    )
+    sent_referrals: Mapped[list[Referral]] = relationship(
+        back_populates="referrer",
+        foreign_keys="Referral.referrer_client_id",
+    )
+    received_referral: Mapped[Referral | None] = relationship(
+        back_populates="referred",
+        foreign_keys="Referral.referred_client_id",
+    )
+    referral_bonuses: Mapped[list[ReferralBonus]] = relationship(
+        back_populates="client",
+        cascade="all, delete-orphan",
     )
 
 
@@ -246,3 +272,94 @@ class BookingExpense(Base):
     )
 
     booking: Mapped[Booking] = relationship(back_populates="expenses")
+
+
+class ReferralCode(Base):
+    __tablename__ = "referral_codes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(
+        ForeignKey("clients.id"), unique=True, nullable=False
+    )
+    code: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+
+    client: Mapped[Client] = relationship(back_populates="referral_code")
+    referrals: Mapped[list[Referral]] = relationship(back_populates="referral_code")
+
+
+class Referral(Base):
+    __tablename__ = "referrals"
+    __table_args__ = (
+        UniqueConstraint("referred_client_id", name="uq_referrals_referred_client"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    referrer_client_id: Mapped[int] = mapped_column(
+        ForeignKey("clients.id"), nullable=False
+    )
+    referred_client_id: Mapped[int] = mapped_column(
+        ForeignKey("clients.id"), nullable=False
+    )
+    referral_code_id: Mapped[int] = mapped_column(
+        ForeignKey("referral_codes.id"), nullable=False
+    )
+    qualified_booking_id: Mapped[int | None] = mapped_column(ForeignKey("bookings.id"))
+    status: Mapped[ReferralStatus] = mapped_column(
+        enum_column(ReferralStatus, "referral_status"),
+        default=ReferralStatus.PENDING,
+        nullable=False,
+    )
+    qualified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False
+    )
+
+    referrer: Mapped[Client] = relationship(
+        back_populates="sent_referrals",
+        foreign_keys=[referrer_client_id],
+    )
+    referred: Mapped[Client] = relationship(
+        back_populates="received_referral",
+        foreign_keys=[referred_client_id],
+    )
+    referral_code: Mapped[ReferralCode] = relationship(back_populates="referrals")
+    qualified_booking: Mapped[Booking | None] = relationship()
+
+
+class ReferralBonus(Base):
+    __tablename__ = "referral_bonuses"
+    __table_args__ = (
+        UniqueConstraint(
+            "client_id",
+            "referral_count",
+            name="uq_referral_bonus_client_count",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"), nullable=False)
+    referral_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    reward_label: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[ReferralBonusStatus] = mapped_column(
+        enum_column(ReferralBonusStatus, "referral_bonus_status"),
+        default=ReferralBonusStatus.PENDING,
+        nullable=False,
+    )
+    notification_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    awarded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False
+    )
+
+    client: Mapped[Client] = relationship(back_populates="referral_bonuses")
