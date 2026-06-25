@@ -8,10 +8,10 @@ Phase: 5
 ## Current State
 
 - Phase: 5
-- Baseline: T18 complete; task graph complete with 79 total tests.
+- Baseline: T19 complete; task graph complete with 81 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-24 - ruff check, ruff format --check, pytest `tests -q` (79 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-25 - ruff check, ruff format --check, pytest `tests -q` (81 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,7 +29,7 @@ Phase: 5
 
 ## Next Task
 
-none - implementation task graph complete through T18.
+none - implementation task graph complete through T19.
 
 For future changes, read:
 
@@ -166,6 +166,9 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   self-booking availability, improved stale-slot recovery, cleared test
   booking/slot data after backup, and loaded official 2026-06-28 and 2026-07-04
   haircut slots.
+- 2026-06-25 - T19 Admin Booking Event Notifications: wired client
+  self-booking, client reschedule, and client cancellation confirmations to
+  notify every configured admin after commit and record delivery logs.
 
 ## Completed Bootstrap Work
 

@@ -22,13 +22,22 @@ from app.bot.keyboards import (
     parse_client_callback_data,
 )
 from app.bot.messages import (
+    admin_new_booking_message,
     booking_cancelled_message,
     booking_confirmation_message,
     booking_rescheduled_message,
     format_location_line,
 )
 from app.config import Settings
-from app.db.models import Booking, BookingStatus, Client, Slot, User
+from app.db.models import (
+    Booking,
+    BookingStatus,
+    Client,
+    DeliveryStatus,
+    NotificationLog,
+    Slot,
+    User,
+)
 from app.services.booking import (
     ACTIVE_BOOKING_STATUSES,
     DEFAULT_HAIRCUT_DURATION_MINUTES,
@@ -84,6 +93,16 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ABOUT_MASTER_TEXT_PATH = PROJECT_ROOT / "about_me.md"
 ABOUT_MASTER_PHOTO_PATH = PROJECT_ROOT / "IMG_9385.PNG"
 MAX_ACTIVE_HAIRCUT_BOOKINGS_PER_DAY = 2
+ADMIN_NEW_BOOKING_NOTIFICATION_KIND = "admin_new_booking"
+ADMIN_BOOKING_RESCHEDULED_NOTIFICATION_KIND = "admin_booking_rescheduled"
+ADMIN_BOOKING_CANCELLED_NOTIFICATION_KIND = "admin_booking_cancelled"
+ADMIN_BOOKING_NOTIFICATION_KINDS = frozenset(
+    {
+        ADMIN_NEW_BOOKING_NOTIFICATION_KIND,
+        ADMIN_BOOKING_RESCHEDULED_NOTIFICATION_KIND,
+        ADMIN_BOOKING_CANCELLED_NOTIFICATION_KIND,
+    }
+)
 
 
 class ClientIdentityRequired(ValueError):
@@ -137,6 +156,16 @@ class ClientCallbackResponse:
     slots: tuple[SlotOption, ...] = ()
     buttons: tuple[MenuButton, ...] = ()
     should_commit: bool = False
+    admin_notification_booking_id: int | None = None
+    admin_notification_kind: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AdminBookingNotificationPayload:
+    booking_id: int
+    client_id: int
+    kind: str
+    text: str
 
 
 def handle_start_command(settings: Settings) -> ClientMenuResponse:
@@ -611,6 +640,8 @@ def handle_client_callback_payload(
             text=response.text,
             buttons=response.buttons,
             should_commit=True,
+            admin_notification_booking_id=response.booking.id,
+            admin_notification_kind=ADMIN_BOOKING_RESCHEDULED_NOTIFICATION_KIND,
         )
 
     if parsed.action == ClientMenuAction.CANCEL_BOOKING:
@@ -643,6 +674,8 @@ def handle_client_callback_payload(
             text=response.text,
             buttons=response.buttons,
             should_commit=True,
+            admin_notification_booking_id=response.booking.id,
+            admin_notification_kind=ADMIN_BOOKING_CANCELLED_NOTIFICATION_KIND,
         )
 
     if parsed.action == ClientMenuAction.SELECT_HAIRCUT_DATE:
@@ -721,6 +754,8 @@ def handle_client_callback_payload(
             text=response.text,
             buttons=response.buttons,
             should_commit=True,
+            admin_notification_booking_id=response.booking.id,
+            admin_notification_kind=ADMIN_NEW_BOOKING_NOTIFICATION_KIND,
         )
 
     return ClientCallbackResponse(text=UNKNOWN_ACTION_TEXT)
@@ -1016,6 +1051,91 @@ def _ensure_client_record_for_contact(
     return True
 
 
+def _admin_booking_notification_payload(
+    session: Session,
+    settings: Settings,
+    *,
+    booking_id: int,
+    kind: str,
+) -> AdminBookingNotificationPayload | None:
+    if kind not in ADMIN_BOOKING_NOTIFICATION_KINDS:
+        raise ValueError("Unknown admin booking notification kind")
+
+    booking = session.get(Booking, booking_id)
+    if booking is None or booking.id is None:
+        return None
+
+    return AdminBookingNotificationPayload(
+        booking_id=booking.id,
+        client_id=booking.client_id,
+        kind=kind,
+        text=_admin_booking_notification_text(booking, settings, kind=kind),
+    )
+
+
+def _admin_booking_notification_text(
+    booking: Booking,
+    settings: Settings,
+    *,
+    kind: str,
+) -> str:
+    if kind == ADMIN_NEW_BOOKING_NOTIFICATION_KIND:
+        return admin_new_booking_message(
+            booking,
+            timezone=settings.timezone_info,
+            **_settings_location_links(settings),
+        )
+    if kind == ADMIN_BOOKING_RESCHEDULED_NOTIFICATION_KIND:
+        return "\n".join(
+            [
+                "Клиент перенес запись",
+                "",
+                booking_rescheduled_message(
+                    booking,
+                    timezone=settings.timezone_info,
+                    **_settings_location_links(settings),
+                ),
+            ]
+        )
+    if kind == ADMIN_BOOKING_CANCELLED_NOTIFICATION_KIND:
+        return "\n".join(
+            [
+                "Клиент отменил запись",
+                "",
+                booking_cancelled_message(
+                    booking,
+                    reason="отменено клиентом",
+                    timezone=settings.timezone_info,
+                    **_settings_location_links(settings),
+                ),
+            ]
+        )
+    raise ValueError("Unknown admin booking notification kind")
+
+
+def _record_admin_booking_notification(
+    session: Session,
+    *,
+    payload: AdminBookingNotificationPayload,
+    recipient_telegram_id: int,
+    status: DeliveryStatus,
+    error: str | None,
+    sent_at: datetime | None,
+) -> None:
+    session.add(
+        NotificationLog(
+            booking_id=payload.booking_id,
+            client_id=payload.client_id,
+            kind=payload.kind,
+            recipient_telegram_id=recipient_telegram_id,
+            status=status,
+            error=error,
+            sent_at=sent_at,
+        )
+    )
+    session.flush()
+
+
 async def dispatch_client_callback_async(
     async_session_factory: async_sessionmaker[AsyncSession],
     settings: Settings,
@@ -1047,6 +1167,68 @@ async def dispatch_client_callback_async(
         else:
             await async_session.rollback()
         return response
+
+
+async def notify_admins_about_booking_event(
+    async_session_factory: Callable[
+        [],
+        AbstractAsyncContextManager[AsyncSession],
+    ],
+    settings: Settings,
+    *,
+    bot,
+    booking_id: int | None,
+    kind: str | None,
+) -> None:
+    if booking_id is None or kind is None:
+        return
+
+    async with async_session_factory() as async_session:
+        payload = await async_session.run_sync(
+            lambda session: _admin_booking_notification_payload(
+                session,
+                settings,
+                booking_id=booking_id,
+                kind=kind,
+            )
+        )
+        if payload is None:
+            await async_session.rollback()
+            return
+
+        for admin_telegram_id in settings.admin_telegram_ids:
+            status = DeliveryStatus.PENDING
+            error = None
+            sent_at = None
+            try:
+                await bot.send_message(admin_telegram_id, payload.text)
+            except Exception as exc:  # noqa: BLE001 - delivery failures are logged
+                status = DeliveryStatus.FAILED
+                error = str(exc) or exc.__class__.__name__
+            else:
+                status = DeliveryStatus.SENT
+                sent_at = datetime.now(UTC)
+
+            def record_notification(
+                session: Session,
+                *,
+                admin_telegram_id: int = admin_telegram_id,
+                status: DeliveryStatus = status,
+                error: str | None = error,
+                sent_at: datetime | None = sent_at,
+            ) -> None:
+                _record_admin_booking_notification(
+                    session,
+                    payload=payload,
+                    recipient_telegram_id=admin_telegram_id,
+                    status=status,
+                    error=error,
+                    sent_at=sent_at,
+                )
+
+            await async_session.run_sync(record_notification)
+
+        await async_session.commit()
 
 
 def build_client_router(
@@ -1124,6 +1306,14 @@ def build_client_router(
                 response.text,
                 reply_markup=_callback_keyboard(response),
                 parse_mode="HTML",
+            )
+        if async_session_factory is not None:
+            await notify_admins_about_booking_event(
+                async_session_factory,
+                settings,
+                bot=callback.bot,
+                booking_id=response.admin_notification_booking_id,
+                kind=response.admin_notification_kind,
             )
 
     @router.message()
