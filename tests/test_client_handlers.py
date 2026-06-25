@@ -6,6 +6,9 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from app.bot.handlers.client import (
+    ADMIN_BOOKING_CANCELLED_NOTIFICATION_KIND,
+    ADMIN_BOOKING_RESCHEDULED_NOTIFICATION_KIND,
+    ADMIN_NEW_BOOKING_NOTIFICATION_KIND,
     CLIENT_WELCOME_TEXT,
     HAIRCUT_CONFIRM_TEXT,
     HAIRCUT_DATE_LIST_TEXT,
@@ -23,6 +26,7 @@ from app.bot.handlers.client import (
     handle_referral_program_request,
     handle_start_command,
     handle_unknown_input,
+    notify_admins_about_booking_event,
 )
 from app.bot.keyboards import (
     ClientMenuAction,
@@ -31,7 +35,16 @@ from app.bot.keyboards import (
 )
 from app.config import Settings
 from app.db import session as db_session
-from app.db.models import Base, Booking, BookingStatus, Client, Slot, User
+from app.db.models import (
+    Base,
+    Booking,
+    BookingStatus,
+    Client,
+    DeliveryStatus,
+    NotificationLog,
+    Slot,
+    User,
+)
 from app.services.booking import DEFAULT_HAIRCUT_PRICE
 
 
@@ -368,6 +381,10 @@ async def test_async_callback_dispatch_commits_only_confirmation() -> None:
         now=now,
     )
     assert booked_response.should_commit
+    assert booked_response.admin_notification_booking_id is not None
+    assert (
+        booked_response.admin_notification_kind == ADMIN_NEW_BOOKING_NOTIFICATION_KIND
+    )
     assert len(booked_response.buttons) == 4
 
     async with session_factory() as async_session:
@@ -377,6 +394,132 @@ async def test_async_callback_dispatch_commits_only_confirmation() -> None:
 
     assert booking is not None
     assert booking.status is BookingStatus.CONFIRMED
+
+    await db_session.drop_all(engine)
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_admins_are_notified_after_client_self_booking() -> None:
+    engine = db_session.create_database_engine("sqlite+aiosqlite:///:memory:")
+    await db_session.create_all(engine)
+    session_factory = db_session.create_session_factory(engine)
+    now = datetime.now(UTC)
+    settings = _settings()
+
+    async with session_factory() as async_session:
+        await async_session.run_sync(
+            lambda session: _create_slot(
+                session,
+                starts_at=now + timedelta(days=1),
+            )
+        )
+        await async_session.commit()
+
+    date_response = await dispatch_client_callback_async(
+        session_factory,
+        settings,
+        callback_payload=client_callback_data(ClientMenuAction.BOOK_HAIRCUT),
+        telegram_user_id=555,
+        now=now,
+    )
+    slot_response = await dispatch_client_callback_async(
+        session_factory,
+        settings,
+        callback_payload=date_response.buttons[0].callback_data,
+        telegram_user_id=555,
+        now=now,
+    )
+    prompt_response = await dispatch_client_callback_async(
+        session_factory,
+        settings,
+        callback_payload=slot_response.slots[0].callback_data,
+        telegram_user_id=555,
+        now=now,
+    )
+    booked_response = await dispatch_client_callback_async(
+        session_factory,
+        settings,
+        callback_payload=prompt_response.buttons[0].callback_data,
+        telegram_user_id=555,
+        display_name="Notify Client",
+        username="notify_client",
+        now=now,
+    )
+
+    bot = FakeAsyncBot()
+    await notify_admins_about_booking_event(
+        session_factory,
+        settings,
+        bot=bot,
+        booking_id=booked_response.admin_notification_booking_id,
+        kind=booked_response.admin_notification_kind,
+    )
+
+    async with session_factory() as async_session:
+        logs = await async_session.run_sync(
+            lambda session: tuple(
+                session.scalars(select(NotificationLog).order_by(NotificationLog.id))
+            )
+        )
+
+    assert [message[0] for message in bot.messages] == [111]
+    assert "Новая запись" in bot.messages[0][1]
+    assert "Стрижка" in bot.messages[0][1]
+    assert len(logs) == 1
+    assert logs[0].kind == ADMIN_NEW_BOOKING_NOTIFICATION_KIND
+    assert logs[0].recipient_telegram_id == 111
+    assert logs[0].status is DeliveryStatus.SENT
+
+    await db_session.drop_all(engine)
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_admin_booking_event_notifications_cover_change_and_cancel() -> None:
+    engine = db_session.create_database_engine("sqlite+aiosqlite:///:memory:")
+    await db_session.create_all(engine)
+    session_factory = db_session.create_session_factory(engine)
+    now = datetime.now(UTC)
+    settings = _settings()
+
+    async with session_factory() as async_session:
+        booking_id = await async_session.run_sync(
+            lambda session: _persist_booking_for_notification(session, now=now)
+        )
+        await async_session.commit()
+
+    bot = FakeAsyncBot()
+    for kind in (
+        ADMIN_NEW_BOOKING_NOTIFICATION_KIND,
+        ADMIN_BOOKING_RESCHEDULED_NOTIFICATION_KIND,
+        ADMIN_BOOKING_CANCELLED_NOTIFICATION_KIND,
+    ):
+        await notify_admins_about_booking_event(
+            session_factory,
+            settings,
+            bot=bot,
+            booking_id=booking_id,
+            kind=kind,
+        )
+
+    async with session_factory() as async_session:
+        logs = await async_session.run_sync(
+            lambda session: tuple(
+                session.scalars(select(NotificationLog).order_by(NotificationLog.id))
+            )
+        )
+
+    assert [message[0] for message in bot.messages] == [111, 111, 111]
+    assert "Новая запись" in bot.messages[0][1]
+    assert "Клиент перенес запись" in bot.messages[1][1]
+    assert "Клиент отменил запись" in bot.messages[2][1]
+    assert tuple(log.kind for log in logs) == (
+        ADMIN_NEW_BOOKING_NOTIFICATION_KIND,
+        ADMIN_BOOKING_RESCHEDULED_NOTIFICATION_KIND,
+        ADMIN_BOOKING_CANCELLED_NOTIFICATION_KIND,
+    )
+    assert all(log.status is DeliveryStatus.SENT for log in logs)
 
     await db_session.drop_all(engine)
     await engine.dispose()
@@ -434,6 +577,11 @@ def test_client_can_view_and_cancel_active_booking() -> None:
             now=now,
         )
         assert cancelled.should_commit
+        assert (
+            cancelled.admin_notification_kind
+            == ADMIN_BOOKING_CANCELLED_NOTIFICATION_KIND
+        )
+        assert cancelled.admin_notification_booking_id is not None
         session.commit()
 
         booking = session.scalar(select(Booking))
@@ -504,6 +652,11 @@ def test_client_can_reschedule_active_booking_to_new_slot() -> None:
             now=now,
         )
         assert rescheduled.should_commit
+        assert (
+            rescheduled.admin_notification_kind
+            == ADMIN_BOOKING_RESCHEDULED_NOTIFICATION_KIND
+        )
+        assert rescheduled.admin_notification_booking_id is not None
         session.commit()
 
         booking = session.scalar(select(Booking))
@@ -767,3 +920,21 @@ def _booking(client: Client, slot: Slot, starts_at: datetime) -> Booking:
         price_amount=Decimal("90.00"),
         status=BookingStatus.CONFIRMED,
     )
+
+
+def _persist_booking_for_notification(session: Session, *, now: datetime) -> int:
+    user = User(telegram_id=555, display_name="Notify Client")
+    client = Client(user=user, display_name="Notify Client")
+    slot = _create_slot(session, starts_at=now + timedelta(days=1))
+    booking = _booking(client, slot, slot.starts_at)
+    session.add(booking)
+    session.flush()
+    return booking.id
+
+
+class FakeAsyncBot:
+    def __init__(self) -> None:
+        self.messages: list[tuple[int, str]] = []
+
+    async def send_message(self, recipient_telegram_id: int, text: str) -> None:
+        self.messages.append((recipient_telegram_id, text))

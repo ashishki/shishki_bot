@@ -47,7 +47,8 @@ Acceptance criteria:
 3. Booking stores client, service, date/time, duration, place, price, status, and created timestamp.
 4. Slot cannot be double-booked under concurrent attempts.
 5. Client receives confirmation with service, date, time, place, duration, price, and change/cancel instructions.
-6. Stylist admin receives a new-booking notification.
+6. Stylist admin receives a notification after confirmed self-booking, client
+   reschedule, and client cancellation; delivery success/failure is logged.
 7. One Telegram client cannot hold more than 2 active haircut bookings on the
    same date.
 

@@ -5,9 +5,9 @@ bot for one stylist.
 
 ## Current Status
 
-- Phase 5 is complete. T18 is complete: manual admin booking is available via
-  `/book`, contact-intent clients are saved for admin follow-up, overlapping
-  bookings are blocked, and official 2026-06-28 / 2026-07-04 slots are loaded.
+- Phase 5 is complete. T19 is complete: client self-booking, client reschedule,
+  and client cancellation now send/log admin notifications after successful
+  confirmation, in addition to manual booking and overlap safeguards from T18.
 - Next task: none in the current task graph.
 - Cycle 9 T13 deployment/operator review findings were closed.
 - Production v1 remains deterministic: no production LLM behavior or external

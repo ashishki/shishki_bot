@@ -657,3 +657,41 @@ Context-Refs:
   - docs/spec.md#feature-2---simple-haircut-booking
   - docs/spec.md#feature-3---complex-service-redirect-and-manual-booking
   - docs/IMPLEMENTATION_CONTRACT.md#booking-integrity
+
+## T19: Admin Booking Event Notifications
+
+Owner:      codex
+Phase:      5
+Type:       none
+Depends-On: T18
+Status:     [x] complete
+Completed:  2026-06-25
+
+Objective: |
+  Notify the configured admin Telegram IDs when a client successfully confirms
+  a self-booked haircut, reschedules a booking, or cancels a booking, without
+  risking the client booking transaction if admin notification delivery fails.
+
+Acceptance-Criteria:
+  - id: AC-1
+    description: "Confirmed client self-booking, reschedule, and cancellation expose the booking ID and event type for admin notification after commit."
+    test: "tests/test_client_handlers.py::test_async_callback_dispatch_commits_only_confirmation"
+  - id: AC-2
+    description: "Admin booking event notifications send the appropriate event text and record delivery logs."
+    test: "tests/test_client_handlers.py::test_admin_booking_event_notifications_cover_change_and_cancel"
+  - id: AC-3
+    description: "Admin notification delivery happens after booking commit and does not change the client confirmation response."
+    test: "tests/test_client_handlers.py"
+
+Files:
+  - app/bot/handlers/client.py
+  - tests/test_client_handlers.py
+  - docs/spec.md
+  - docs/CODEX_PROMPT.md
+  - docs/tasks.md
+  - docs/IMPLEMENTATION_JOURNAL.md
+  - docs/EVIDENCE_INDEX.md
+
+Context-Refs:
+  - docs/spec.md#feature-2---simple-haircut-booking
+  - docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity
