@@ -38,19 +38,22 @@ Out of scope for v1: multilingual copy and rich media onboarding.
 
 ## Feature 2 - Simple Haircut Booking
 
-Description: Clients can self-book a simple haircut into available slots.
+Description: Clients can self-book a male or female haircut into available
+slots.
 
 Acceptance criteria:
 
-1. Bot shows only available future slots.
+1. Bot asks for haircut type before showing only available future slots.
 2. Client must confirm before booking is created.
 3. Booking stores client, service, date/time, duration, place, price, status, and created timestamp.
 4. Slot cannot be double-booked under concurrent attempts.
 5. Client receives confirmation with service, date, time, place, duration, price, and change/cancel instructions.
 6. Stylist admin receives a notification after confirmed self-booking, client
-   reschedule, and client cancellation; delivery success/failure is logged.
+   reschedule, and client cancellation; the notification includes client
+   identity/chat when available, and delivery success/failure is logged.
 7. One Telegram client cannot hold more than 2 active haircut bookings on the
    same date.
+8. Male haircut self-booking is 100 GEL; female haircut self-booking is 120 GEL.
 
 Out of scope for v1: online payment and automatic deposits.
 
@@ -66,7 +69,8 @@ Acceptance criteria:
 3. Client choosing consultation receives stylist contact link without creating a booking.
 4. Coloring and consultation redirect screens keep buttons for other service
    choices and the main menu.
-5. Admin can create a manual booking with custom service, duration, date/time, price, place, and notes.
+5. Admin can create a manual booking with custom service, duration, date/time,
+   price, place, and notes using either client ID or Telegram username.
 6. Admin can send client a confirmation for a manual booking when the client has a Telegram identity.
 7. Manual bookings block all overlapping self-booking slots for their full
    duration, not only the starting slot.
@@ -84,6 +88,8 @@ Acceptance criteria:
 3. Admin can reschedule, cancel, change service, change duration, change price, change place, and update notes.
 4. Booking changes create status/change history records.
 5. Relevant changes send client notifications or log delivery failure.
+6. Admin can close one free slot or the remaining free slots in a day without
+   changing occupied active bookings.
 
 Out of scope for v1: web admin panel and multi-admin permissions beyond a simple allowlist.
 

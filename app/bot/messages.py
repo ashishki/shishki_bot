@@ -7,7 +7,8 @@ from decimal import Decimal
 from html import escape
 from zoneinfo import ZoneInfo
 
-from app.db.models import Booking
+from app.db.models import Booking, Client
+from app.services.booking import haircut_service_label
 
 DEFAULT_MESSAGE_TIMEZONE = ZoneInfo("Asia/Tbilisi")
 
@@ -170,6 +171,7 @@ def admin_new_booking_message(
     return "\n".join(
         [
             "Новая запись",
+            *admin_booking_client_lines(booking),
             f"Услуга: {_html(_service_label(booking.service))}",
             f"Дата: {_format_date(booking.starts_at, timezone)}",
             f"Время: {_format_time(booking.starts_at, timezone)}",
@@ -182,6 +184,23 @@ def admin_new_booking_message(
             f"Цена: {_format_money(booking.price_amount)} GEL",
         ]
     )
+
+
+def admin_booking_client_lines(booking: Booking) -> list[str]:
+    client = booking.client
+    if client is None:
+        return ["Клиент: неизвестно"]
+
+    lines = [
+        f"Клиент: {_html(_client_display_name(client))}",
+        f"ID клиента: {client.id}",
+    ]
+    if client.user and client.user.username:
+        lines.append(f"Telegram: @{_html(client.user.username)}")
+    contact_url = _client_contact_url(client)
+    if contact_url:
+        lines.append(f'Чат: <a href="{escape(contact_url, quote=True)}">открыть</a>')
+    return lines
 
 
 def format_location_line(
@@ -236,7 +255,25 @@ def _html_link(label: str, url: str) -> str:
 
 
 def _service_label(value: str) -> str:
-    return "Стрижка" if value == "haircut" else value
+    return haircut_service_label(value)
+
+
+def _client_display_name(client: Client) -> str:
+    if client.display_name:
+        return client.display_name
+    if client.user and client.user.display_name:
+        return client.user.display_name
+    if client.user and client.user.username:
+        return f"@{client.user.username}"
+    return f"Клиент #{client.id}"
+
+
+def _client_contact_url(client: Client) -> str | None:
+    if client.user and client.user.username:
+        return f"https://t.me/{client.user.username}"
+    if client.user and client.user.telegram_id:
+        return f"tg://user?id={client.user.telegram_id}"
+    return None
 
 
 _MONTHS_RU = {

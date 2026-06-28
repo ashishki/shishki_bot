@@ -97,8 +97,8 @@ The goal is not to pre-design the system, but to give the Strategist enough cont
   * Polished welcome message and clear client menu.
   * Display of available dates and time slots.
   * 1-hour haircut slots.
-  * Fixed haircut price: 90 GEL.
-  * Same price for men’s and women’s haircut.
+  * Male haircut price: 100 GEL.
+  * Female haircut price: 120 GEL.
   * Booking confirmation with service, date, time, place/address, duration, and price.
   * Prevention of double booking.
   * Automatic reminders 24 hours before and a few hours before service.
@@ -156,8 +156,8 @@ List the parts that probably should stay deterministic unless the Strategist pro
   * Slot must exist.
   * Slot must be available.
   * Slot duration is 1 hour.
-  * Haircut price is always 90 GEL.
-  * Men’s and women’s haircut price is the same.
+  * Male haircut price is 100 GEL.
+  * Female haircut price is 120 GEL.
   * Coloring cannot be self-booked automatically in v1.
   * Coloring and complex services can be created manually by the stylist with custom duration and price.
   * User cannot book an already reserved slot.
@@ -307,9 +307,9 @@ List the parts that probably should stay deterministic unless the Strategist pro
 
 * **What prior evidence or proof will future agents need to find quickly:**
 
-  * Fixed haircut price: 90 GEL.
+  * Haircut prices: 100 GEL male, 120 GEL female.
   * Haircut duration: 1 hour.
-  * Men’s and women’s haircut price is the same.
+  * Client chooses male or female haircut before date selection.
   * Coloring requires personal consultation.
   * Coloring and complex services can be entered manually by the stylist.
   * Client confirmations must include service, date, time, place, and price.
@@ -459,8 +459,8 @@ Buttons:
 Hi! Here you can book an appointment.
 
 Haircut duration: 1 hour.
-Haircut price: 90 GEL.
-Men’s and women’s haircut cost the same.
+Male haircut price: 100 GEL.
+Female haircut price: 120 GEL.
 
 Choose an available date and time below.
 
@@ -475,7 +475,7 @@ Date: {date}
 Time: {time}
 Place: {place}
 Duration: 1 hour
-Price: 90 GEL
+Price: {100_or_120_GEL}
 
 I will send you a reminder 24 hours before the appointment and again a few hours before.
 
@@ -530,14 +530,14 @@ Reminder: your haircut is tomorrow.
 Date: {date}
 Time: {time}
 Place: {place}
-Price: 90 GEL
+Price: {100_or_120_GEL}
 
 ## Reminder a few hours before
 
 Reminder: your haircut is today at {time}.
 
 Place: {place}
-Price: 90 GEL.
+Price: {100_or_120_GEL}.
 
 ## Admin menu
 

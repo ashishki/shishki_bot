@@ -8,10 +8,10 @@ Phase: 5
 ## Current State
 
 - Phase: 5
-- Baseline: T19 complete; task graph complete with 81 total tests.
+- Baseline: T20 complete; task graph complete with 85 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-25 - ruff check, ruff format --check, pytest `tests -q` (81 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-28 - ruff check, ruff format --check, pytest `tests -q` (85 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,7 +29,7 @@ Phase: 5
 
 ## Next Task
 
-none - implementation task graph complete through T19.
+none - implementation task graph complete through T20.
 
 For future changes, read:
 
@@ -169,6 +169,11 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
 - 2026-06-25 - T19 Admin Booking Event Notifications: wired client
   self-booking, client reschedule, and client cancellation confirmations to
   notify every configured admin after commit and record delivery logs.
+- 2026-06-28 - T20 Haircut Variants And Admin Slot Closures: split
+  self-booked haircut into male/female variants with 100/120 GEL pricing,
+  added admin-visible client identity/chat in booking messages, allowed manual
+  booking by client ID or Telegram username, added admin slot/day closing
+  commands, and updated the live July schedule after backup.
 
 ## Completed Bootstrap Work
 
@@ -191,8 +196,9 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   `/start ref_<code>`, qualified after completed visits, and every 3 qualified
   referrals creates a pending professional hair cosmetics/styling bonus for
   admin follow-up.
-- Client start menu now asks for service selection: `Стрижка` leads to dates
-  and slots, while `Окрашивание` and `Консультация` route to stylist chat.
+- Client start menu asks for service selection. `Стрижка` leads to male/female
+  haircut choice, then dates and slots; male haircut is 100 GEL and female
+  haircut is 120 GEL. `Окрашивание` and `Консультация` route to stylist chat.
   One Telegram client cannot hold more than 2 active haircut bookings on the
   same date through self-booking.
 - Primary client menu is intentionally limited to `Стрижка`, `Окрашивание`,
@@ -200,13 +206,21 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   show haircut price/duration, referral access is shown after booking and inside
   the active booking flow, and secondary screens keep service/main-menu
   navigation available.
-- Admin manual bookings can be created with `/book <client_id> <YYYY-MM-DD>
-  <HH:MM> <minutes> <price> <service>`. The client must have a client card
-  first, usually by pressing `/start`, `Окрашивание`, or `Консультация`.
+- Admin manual bookings can be created with `/book <client_id|@username>
+  <YYYY-MM-DD> <HH:MM> <minutes> <price> <service>`. The client must have a
+  client card first, usually by pressing `/start`, `Окрашивание`, or
+  `Консультация`. Admin schedule and notification views show the client name,
+  ID, and chat link when available.
+- Admin can hide free time with `/close <YYYY-MM-DD> <HH:MM>` or close the
+  remaining free slots in a day with `/close_day <YYYY-MM-DD> <HH:MM>`.
 - Live local database was backed up to
   `/srv/openclaw-you/backups/shishki_bot/shishki_bot_before_official_slots_20260624_130105.db`
   before clearing test booking/slot records. Active official slots are
-  2026-06-28 13:00-19:00 and 2026-07-04 10:00-19:00 at the configured address.
+  2026-06-28 13:00-19:00, 2026-07-04 10:00-15:00 with active bookings at
+  14:00 and 15:00 and closed slots from 16:00, plus 2026-07-08 and
+  2026-07-10 10:00-19:00 at the configured address.
+- Latest live database backup before T20 schedule edits:
+  `/srv/openclaw-you/backups/shishki_bot/shishki_bot_before_t20_slots_20260628_161425.db`.
 
 ## Instructions For Codex
 

@@ -5,9 +5,10 @@ bot for one stylist.
 
 ## Current Status
 
-- Phase 5 is complete. T19 is complete: client self-booking, client reschedule,
-  and client cancellation now send/log admin notifications after successful
-  confirmation, in addition to manual booking and overlap safeguards from T18.
+- Phase 5 is complete. T20 is complete: clients choose male or female haircut
+  pricing before dates, admin booking notifications show client identity/chat,
+  manual bookings accept client ID or Telegram username, and admins can close
+  one slot or the rest of a day from Telegram.
 - Next task: none in the current task graph.
 - Cycle 9 T13 deployment/operator review findings were closed.
 - Production v1 remains deterministic: no production LLM behavior or external

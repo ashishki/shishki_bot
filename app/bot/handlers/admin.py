@@ -9,7 +9,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from html import escape
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
@@ -39,10 +39,12 @@ from app.db.models import (
     User,
 )
 from app.services.booking import (
+    ACTIVE_BOOKING_STATUSES,
     BookingServiceError,
     SlotUnavailableError,
     cancel_booking_by_admin,
     create_manual_booking,
+    haircut_service_label,
     list_available_slots,
     reschedule_booking,
     update_booking_details_by_admin,
@@ -74,12 +76,25 @@ NO_REFERRAL_BONUSES_TEXT = "Бонусов к выдаче пока нет."
 MANUAL_BOOKING_HELP_TEXT = "\n".join(
     [
         "Создать ручную запись:",
-        "/book <client_id> <YYYY-MM-DD> <HH:MM> <минуты> <цена> <услуга>",
+        "/book <client_id|@username> <YYYY-MM-DD> <HH:MM> <минуты> <цена> <услуга>",
         "",
         "Пример:",
-        "/book 3 2026-06-28 15:00 180 250 Окрашивание",
+        "/book @client 2026-06-28 15:00 180 250 Окрашивание",
         "",
-        "client_id берется из «Клиенты» -> карточка клиента.",
+        "ID и username видны в «Клиенты» -> карточка клиента.",
+    ]
+)
+SLOT_CLOSING_HELP_TEXT = "\n".join(
+    [
+        "Закрыть время:",
+        "/close <YYYY-MM-DD> <HH:MM>",
+        "",
+        "Закрыть остаток дня с указанного времени:",
+        "/close_day <YYYY-MM-DD> <HH:MM>",
+        "",
+        "Примеры:",
+        "/close 2026-07-04 16:00",
+        "/close_day 2026-07-04 16:00",
     ]
 )
 
@@ -141,7 +156,7 @@ class AdminNotificationAttempt:
 
 @dataclass(frozen=True, slots=True)
 class ManualBookingCommand:
-    client_id: int
+    client_ref: str
     starts_at: datetime
     duration_minutes: int
     price_amount: Decimal
@@ -229,6 +244,7 @@ def handle_admin_manual_booking_command(
 ) -> AdminNotificationAttempt:
     require_admin_user(telegram_user_id, settings)
     command = _parse_manual_booking_command(command_text, settings)
+    client = _resolve_client_reference(session, command.client_ref)
     slot = _get_or_create_manual_slot(
         session,
         settings,
@@ -236,7 +252,7 @@ def handle_admin_manual_booking_command(
     )
     booking = create_manual_booking(
         session,
-        client_id=command.client_id,
+        client_id=client.id,
         slot_id=slot.id,
         service=command.service,
         duration_minutes=command.duration_minutes,
@@ -261,6 +277,116 @@ def handle_admin_manual_booking_command(
         recipient_telegram_id=_recipient_telegram_id(booking),
         kind="booking_confirmation",
         text=text,
+    )
+
+
+def handle_admin_close_slot_command(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    command_text: str | None,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    starts_at = _parse_slot_closing_command(command_text, settings, "/close")
+    slot = _find_slot_by_local_start(session, settings, starts_at=starts_at)
+    if slot is None:
+        return AdminRuntimeResponse(
+            text="Слот не найден.\n\n" + SLOT_CLOSING_HELP_TEXT,
+            buttons=(_admin_menu_button(),),
+        )
+
+    booking = _active_booking_for_slot(session, slot)
+    if booking is not None:
+        return AdminRuntimeResponse(
+            text=(
+                "Не закрываю: на это время есть активная запись.\n"
+                + _booking_line(booking, settings)
+            ),
+            buttons=(
+                _booking_detail_button(booking, settings),
+                _schedule_date_button(_slot_local_date(slot, settings)),
+                _admin_menu_button(),
+            ),
+        )
+    if slot.is_blocked:
+        return AdminRuntimeResponse(
+            text=(
+                "Слот уже закрыт: "
+                f"{_format_datetime(_slot_local_start(slot, settings))}"
+            ),
+            buttons=(
+                _schedule_date_button(_slot_local_date(slot, settings)),
+                _admin_menu_button(),
+            ),
+        )
+
+    _block_slot(slot, note="closed by admin command")
+    session.flush()
+    return AdminRuntimeResponse(
+        text=f"Слот закрыт: {_format_datetime(_slot_local_start(slot, settings))}",
+        buttons=(
+            _schedule_date_button(_slot_local_date(slot, settings)),
+            _admin_menu_button(),
+        ),
+    )
+
+
+def handle_admin_close_day_command(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    command_text: str | None,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    starts_at = _parse_slot_closing_command(command_text, settings, "/close_day")
+    selected_date = starts_at.date()
+    local_start = starts_at.time()
+    slots = tuple(
+        slot
+        for slot in _slots_for_date(session, settings, selected_date)
+        if _slot_local_start(slot, settings).time() >= local_start
+    )
+    if not slots:
+        return AdminRuntimeResponse(
+            text="На эту дату и время слоты не найдены.\n\n" + SLOT_CLOSING_HELP_TEXT,
+            buttons=(_admin_menu_button(),),
+        )
+
+    closed_count = 0
+    already_closed_count = 0
+    skipped_bookings: list[Booking] = []
+    for slot in slots:
+        booking = _active_booking_for_slot(session, slot)
+        if booking is not None:
+            skipped_bookings.append(booking)
+            continue
+        if slot.is_blocked:
+            already_closed_count += 1
+            continue
+        _block_slot(slot, note="rest of day closed by admin command")
+        closed_count += 1
+    session.flush()
+
+    lines = [
+        (
+            "Закрыл свободные слоты: "
+            f"{_format_date_label(selected_date)} с {starts_at:%H:%M}, "
+            f"{closed_count} шт."
+        )
+    ]
+    if already_closed_count:
+        lines.append(f"Уже были закрыты: {already_closed_count}.")
+    if skipped_bookings:
+        lines.append("Не тронул слоты с активными записями:")
+        lines.extend(_booking_line(booking, settings) for booking in skipped_bookings)
+    return AdminRuntimeResponse(
+        text="\n".join(lines),
+        buttons=(
+            _schedule_date_button(selected_date),
+            _admin_menu_button(),
+        ),
     )
 
 
@@ -661,7 +787,11 @@ def handle_admin_schedule_date_view(
     lines = [
         f"Расписание: {_format_date_label(selected_date)}",
         f"Слотов: {len(slots)}",
+        f"Открытых слотов: {sum(1 for slot in slots if not slot.is_blocked)}",
         f"Записей: {len(bookings)}",
+        "",
+        f"Закрыть час: /close {selected_date.isoformat()} HH:MM",
+        f"Закрыть остаток дня: /close_day {selected_date.isoformat()} HH:MM",
     ]
     buttons: list[AdminRuntimeButton] = []
     if bookings:
@@ -972,6 +1102,30 @@ def build_admin_router(
             parse_mode="HTML",
         )
 
+    @router.message(Command("close"))
+    async def close_slot(message: Message) -> None:
+        await _handle_slot_closing_message(
+            message,
+            lambda session: handle_admin_close_slot_command(
+                session,
+                settings,
+                telegram_user_id=message.from_user.id if message.from_user else None,
+                command_text=message.text,
+            ),
+        )
+
+    @router.message(Command("close_day"))
+    async def close_day(message: Message) -> None:
+        await _handle_slot_closing_message(
+            message,
+            lambda session: handle_admin_close_day_command(
+                session,
+                settings,
+                telegram_user_id=message.from_user.id if message.from_user else None,
+                command_text=message.text,
+            ),
+        )
+
     @router.callback_query(F.data.startswith(f"{ADMIN_CALLBACK_PREFIX}:"))
     async def admin_callback(callback: CallbackQuery) -> None:
         telegram_user_id = callback.from_user.id if callback.from_user else None
@@ -995,6 +1149,36 @@ def build_admin_router(
                 reply_markup=_runtime_keyboard(response.buttons),
                 parse_mode="HTML",
             )
+
+    async def _handle_slot_closing_message(
+        message: Message,
+        handler: Callable[[Session], AdminRuntimeResponse],
+    ) -> None:
+        if async_session_factory is None:
+            await message.answer(SLOT_CLOSING_HELP_TEXT)
+            return
+
+        async with async_session_factory() as async_session:
+            try:
+                response = await async_session.run_sync(handler)
+            except AdminAccessDenied:
+                await async_session.rollback()
+                await message.answer(ADMIN_ACCESS_DENIED_TEXT)
+                return
+            except ValueError as exc:
+                await async_session.rollback()
+                await message.answer(
+                    f"{_html(exc)}\n\n{SLOT_CLOSING_HELP_TEXT}",
+                    parse_mode="HTML",
+                )
+                return
+            await async_session.commit()
+
+        await message.answer(
+            response.text,
+            reply_markup=_runtime_keyboard(response.buttons),
+            parse_mode="HTML",
+        )
 
     async def _dispatch_admin_callback(
         payload: str | None,
@@ -1106,6 +1290,12 @@ def build_admin_router(
             require_admin_user(telegram_user_id, settings)
             return AdminRuntimeResponse(
                 text=MANUAL_BOOKING_HELP_TEXT,
+                buttons=(_admin_menu_button(),),
+            )
+        if action is AdminMenuAction.CLOSE_SLOTS:
+            require_admin_user(telegram_user_id, settings)
+            return AdminRuntimeResponse(
+                text=SLOT_CLOSING_HELP_TEXT,
                 buttons=(_admin_menu_button(),),
             )
         if (
@@ -1260,11 +1450,10 @@ def _parse_manual_booking_command(
     settings: Settings,
 ) -> ManualBookingCommand:
     parts = (command_text or "").strip().split(maxsplit=6)
-    if len(parts) != 7 or not parts[0].startswith("/book"):
+    if len(parts) != 7 or not _command_matches(parts[0], "/book"):
         raise ValueError("Неверный формат команды.")
 
     try:
-        client_id = int(parts[1])
         selected_date = date.fromisoformat(parts[2])
         hour, minute = (int(value) for value in parts[3].split(":", maxsplit=1))
         starts_at = datetime(
@@ -1281,6 +1470,9 @@ def _parse_manual_booking_command(
             "Не удалось разобрать дату, время, длительность или цену."
         ) from exc
 
+    client_ref = parts[1].strip()
+    if not client_ref:
+        raise ValueError("Укажите client_id или username.")
     service = parts[6].strip()
     if not service:
         raise ValueError("Укажите услугу.")
@@ -1294,12 +1486,38 @@ def _parse_manual_booking_command(
         raise ValueError("Нельзя создать запись в прошлом.")
 
     return ManualBookingCommand(
-        client_id=client_id,
+        client_ref=client_ref,
         starts_at=starts_at,
         duration_minutes=duration_minutes,
         price_amount=price_amount,
         service=service,
     )
+
+
+def _resolve_client_reference(session: Session, client_ref: str) -> Client:
+    normalized_ref = client_ref.strip()
+    if not normalized_ref:
+        raise BookingServiceError("Client reference is required")
+
+    if normalized_ref.isdigit():
+        client = session.get(Client, int(normalized_ref))
+        if client is not None:
+            return client
+        raise BookingServiceError(f"Client not found: {normalized_ref}")
+
+    username = _normalize_username_reference(normalized_ref)
+    if not username:
+        raise BookingServiceError(f"Client not found: {client_ref}")
+
+    client = session.scalar(
+        select(Client)
+        .join(User, isouter=True)
+        .where(func.lower(User.username) == username.lower())
+        .limit(1)
+    )
+    if client is None:
+        raise BookingServiceError(f"Client not found: {client_ref}")
+    return client
 
 
 def _get_or_create_manual_slot(
@@ -1326,6 +1544,84 @@ def _get_or_create_manual_slot(
     session.add(slot)
     session.flush()
     return slot
+
+
+def _parse_slot_closing_command(
+    command_text: str | None,
+    settings: Settings,
+    command_name: str,
+) -> datetime:
+    parts = (command_text or "").strip().split(maxsplit=2)
+    if len(parts) != 3 or not _command_matches(parts[0], command_name):
+        raise ValueError("Неверный формат команды.")
+
+    try:
+        selected_date = date.fromisoformat(parts[1])
+        hour, minute = (int(value) for value in parts[2].split(":", maxsplit=1))
+        starts_at = datetime(
+            selected_date.year,
+            selected_date.month,
+            selected_date.day,
+            hour,
+            minute,
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Не удалось разобрать дату или время.") from exc
+
+    now_local = datetime.now(settings.timezone_info).replace(tzinfo=None)
+    if starts_at <= now_local:
+        raise ValueError("Нельзя закрыть слот в прошлом.")
+    return starts_at
+
+
+def _find_slot_by_local_start(
+    session: Session,
+    settings: Settings,
+    *,
+    starts_at: datetime,
+) -> Slot | None:
+    selected_date = starts_at.date()
+    selected_time = starts_at.time()
+    for slot in _slots_for_date(session, settings, selected_date):
+        if _slot_local_start(slot, settings).time() == selected_time:
+            return slot
+    return None
+
+
+def _active_booking_for_slot(session: Session, slot: Slot) -> Booking | None:
+    return session.scalar(
+        select(Booking)
+        .where(
+            Booking.status.in_(ACTIVE_BOOKING_STATUSES),
+            Booking.starts_at < slot.ends_at,
+            Booking.ends_at > slot.starts_at,
+        )
+        .order_by(Booking.starts_at)
+        .limit(1)
+    )
+
+
+def _block_slot(slot: Slot, *, note: str) -> None:
+    slot.is_blocked = True
+    slot.note = note
+
+
+def _command_matches(raw_command: str, expected_command: str) -> bool:
+    return raw_command.split("@", maxsplit=1)[0] == expected_command
+
+
+def _normalize_username_reference(client_ref: str) -> str | None:
+    value = client_ref.strip()
+    if value.startswith("https://t.me/"):
+        value = value.removeprefix("https://t.me/")
+    elif value.startswith("http://t.me/"):
+        value = value.removeprefix("http://t.me/")
+    elif value.startswith("t.me/"):
+        value = value.removeprefix("t.me/")
+    if value.startswith("@"):
+        value = value[1:]
+    value = value.split("/", maxsplit=1)[0].strip()
+    return value or None
 
 
 def _parse_admin_runtime_payload(
@@ -1505,9 +1801,20 @@ def _schedule_dates(
 
 def _booking_line(booking: Booking, settings: Settings) -> str:
     starts_at = _booking_local_start(booking, settings)
+    client = booking.client
+    client_label = "клиент неизвестен"
+    if client is not None:
+        contact_url = _client_contact_url(client)
+        display_name = _client_display_name(client)
+        client_label = _html(display_name)
+        if contact_url:
+            client_label = (
+                f'<a href="{escape(contact_url, quote=True)}">{client_label}</a>'
+            )
     return (
         f"- #{booking.id} {_format_datetime(starts_at)} "
         f"{_html(_service_label(booking.service))} / {_status_label(booking.status)}"
+        f" / {client_label}"
     )
 
 
@@ -1547,7 +1854,7 @@ def _format_datetime(value: datetime) -> str:
 
 
 def _service_label(value: str) -> str:
-    return "Стрижка" if value == "haircut" else value
+    return haircut_service_label(value)
 
 
 def _status_label(value: BookingStatus) -> str:

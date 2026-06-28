@@ -13,6 +13,7 @@ class AdminMenuAction(StrEnum):
     MENU = "menu"
     TODAY = "today"
     THIS_WEEK = "this_week"
+    CLOSE_SLOTS = "close_slots"
     MANUAL_BOOKING = "manual_booking"
     CHANGE_BOOKING = "change_booking"
     CANCEL_BOOKING = "cancel_booking"
@@ -67,6 +68,7 @@ class MenuButton:
 _ADMIN_MENU_LAYOUT: tuple[tuple[AdminMenuAction, str], ...] = (
     (AdminMenuAction.TODAY, "Сегодня"),
     (AdminMenuAction.THIS_WEEK, "Ближайшие даты"),
+    (AdminMenuAction.CLOSE_SLOTS, "Закрыть время"),
     (AdminMenuAction.MANUAL_BOOKING, "Создать запись"),
     (AdminMenuAction.CHANGE_BOOKING, "Перенести запись"),
     (AdminMenuAction.CANCEL_BOOKING, "Отменить запись"),

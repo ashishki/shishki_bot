@@ -67,6 +67,7 @@ def test_admin_menu_actions() -> None:
     expected_actions = (
         AdminMenuAction.TODAY,
         AdminMenuAction.THIS_WEEK,
+        AdminMenuAction.CLOSE_SLOTS,
         AdminMenuAction.MANUAL_BOOKING,
         AdminMenuAction.CHANGE_BOOKING,
         AdminMenuAction.CANCEL_BOOKING,
@@ -82,6 +83,7 @@ def test_admin_menu_actions() -> None:
     assert tuple(button.label for button in response.buttons) == (
         "Сегодня",
         "Ближайшие даты",
+        "Закрыть время",
         "Создать запись",
         "Перенести запись",
         "Отменить запись",

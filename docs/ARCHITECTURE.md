@@ -105,7 +105,7 @@ Human approval is required for:
 | Subproblem | Owner | Rule |
 |------------|-------|------|
 | Booking validation | Deterministic | Slot must exist, be available, and be locked transactionally. |
-| Pricing | Deterministic/admin-entered | Haircut defaults to 90 GEL; complex services use manual price. |
+| Pricing | Deterministic/admin-entered | Male haircut defaults to 100 GEL, female haircut to 120 GEL; complex services use manual price. |
 | Status transitions | Deterministic | Only declared statuses are valid. |
 | Notifications | Deterministic | Client notifications are sent from templates after booking changes. |
 | Revenue/client stats | Deterministic | Calculated from completed bookings and recorded expenses. |

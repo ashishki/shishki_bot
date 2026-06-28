@@ -327,3 +327,14 @@ Status: append-only
 - Data operation: found 1 existing booking without an `admin_new_booking` log, sent one backfill admin notification, and recorded a `sent` notification log.
 - Follow-ups: Monitor `notification_logs` for `admin_new_booking`, `admin_booking_rescheduled`, and `admin_booking_cancelled` rows after live client actions.
 - Notes: No schema migration. Admin notifications are sent after the booking transaction commits; delivery success/failure is stored as `NotificationLog` rows and does not cancel the client booking.
+
+### 2026-06-28 - T20 - Haircut Variants And Admin Slot Closures
+
+- Scope: `app/services/booking.py`, `app/bot/handlers/client.py`, `app/bot/handlers/admin.py`, `app/bot/messages.py`, `app/bot/keyboards.py`, booking/client/admin/notification tests, operator docs, and live local SQLite schedule data.
+- Why: Clients need male/female haircut pricing, admin needs to identify who booked and book by username, and the live schedule needs operational controls for closing free time.
+- Decisions applied: `D-002`, `D-003`, `D-004`
+- Evidence collected: targeted booking/client/admin/notification tests; ruff check; ruff format --check; full pytest passed with 85 tests; integrity check; skill security gate.
+- Data operation: stopped `shishki-bot.service`, backed up `shishki_bot.db` to `/srv/openclaw-you/backups/shishki_bot/shishki_bot_before_t20_slots_20260628_161425.db`, closed free 2026-07-04 slots at 16:00, 17:00, 18:00, and 19:00, and created 20 slots for 2026-07-08 and 2026-07-10 hourly starts 10:00 through 19:00.
+- Live schedule check: 2026-07-04 has active bookings at 14:00 and 15:00, so client-visible open starts are 10:00 through 13:00; 2026-07-08 and 2026-07-10 show 10:00 through 19:00.
+- Follow-ups: Smoke-test `/book @username`, `/close`, `/close_day`, and one male/female client booking path in Telegram after restart.
+- Notes: No schema migration. Existing legacy `haircut` bookings remain readable; new self-booked haircuts store `haircut_male` or `haircut_female`.
