@@ -338,3 +338,12 @@ Status: append-only
 - Live schedule check: 2026-07-04 has active bookings at 14:00 and 15:00, so client-visible open starts are 10:00 through 13:00; 2026-07-08 and 2026-07-10 show 10:00 through 19:00.
 - Follow-ups: Smoke-test `/book @username`, `/close`, `/close_day`, and one male/female client booking path in Telegram after restart.
 - Notes: No schema migration. Existing legacy `haircut` bookings remain readable; new self-booked haircuts store `haircut_male` or `haircut_female`.
+
+### 2026-06-28 - T21 - Admin Dashboard And Price-Free Reminders
+
+- Scope: `app/bot/handlers/admin.py`, `app/bot/keyboards.py`, `app/bot/messages.py`, admin/auth/notification tests, and operator/product docs.
+- Why: Admin needs one useful main menu for bookings, people, and metrics, and client reminders should not mention price.
+- Decisions applied: `D-002`, `D-003`, `D-004`
+- Evidence collected: targeted admin/auth/notification/reminder tests; ruff check; ruff format --check; full pytest passed with 86 tests; integrity check; skill security gate.
+- Follow-ups: Smoke-test `/admin`, `Метрики`, `Клиенты`, and `Записи` in Telegram after restart.
+- Notes: No schema migration. Move/cancel remains available from booking detail rather than as standalone main-menu actions.

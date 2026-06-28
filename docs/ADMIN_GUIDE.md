@@ -16,17 +16,18 @@ This guide is for the stylist/admin operating `shishki_bot`.
 
 The admin menu exposes:
 
-- Today
-- This week
-- Manual booking
-- Change booking
-- Cancel booking
-- Revenue
-- Clients
+- Записи
+- Клиенты
+- Метрики
+- Создать запись
+- Закрыть время
+- Сегодня
 - Бонусы
 
 The code also provides tested service/admin wrapper behavior for:
 
+- Opening `/admin` as a dashboard with today/upcoming bookings, free slots,
+  client counts, weekly revenue, and pending bonuses.
 - Creating manual complex bookings with custom service, duration, price, place,
   and notes.
 - Rescheduling bookings and logging/sending client notifications.
@@ -34,7 +35,8 @@ The code also provides tested service/admin wrapper behavior for:
 - Updating client-visible booking details with required notification logging.
 - Completing bookings with final amount and recorded expenses.
 - Viewing weekly gross/net revenue from completed bookings only.
-- Viewing client cards and visit history from completed bookings only.
+- Viewing client cards, visit history, and per-client metrics from completed
+  bookings only.
 - Viewing referral progress on client cards.
 - Viewing referral bonuses and marking a cosmetics/styling bonus as awarded.
 - Closing one free slot or the rest of a day from Telegram admin commands.

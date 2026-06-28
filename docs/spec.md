@@ -84,12 +84,15 @@ Description: Stylist can manage the schedule from Telegram admin menu.
 Acceptance criteria:
 
 1. Admin-only menu is restricted to allowlisted Telegram IDs.
-2. Admin can view today, tomorrow, week, and upcoming bookings.
+2. Admin can open `/admin` and see a dashboard with today/upcoming bookings,
+   client counts, free slots, weekly metrics, and quick controls.
 3. Admin can reschedule, cancel, change service, change duration, change price, change place, and update notes.
 4. Booking changes create status/change history records.
 5. Relevant changes send client notifications or log delivery failure.
 6. Admin can close one free slot or the remaining free slots in a day without
    changing occupied active bookings.
+7. Admin can open client list/cards and see per-client visit, spend, current
+   booking, history, and referral metrics.
 
 Out of scope for v1: web admin panel and multi-admin permissions beyond a simple allowlist.
 
@@ -105,6 +108,7 @@ Acceptance criteria:
 3. Reminder sending is restart-safe by reading pending reminders from database.
 4. Duplicate reminders are prevented by delivery logs.
 5. Reschedule/cancel/change notifications include the updated appointment details.
+6. Client reminder messages do not include appointment price.
 
 Out of scope for v1: SMS/email notifications.
 

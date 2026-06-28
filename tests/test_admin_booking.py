@@ -12,8 +12,10 @@ from app.bot.handlers.admin import (
     handle_admin_cancel_booking,
     handle_admin_close_day_command,
     handle_admin_close_slot_command,
+    handle_admin_dashboard,
     handle_admin_manual_booking,
     handle_admin_manual_booking_command,
+    handle_admin_metrics_dashboard,
     handle_admin_reschedule_booking,
     handle_admin_update_booking_details,
 )
@@ -119,7 +121,7 @@ def test_admin_manual_booking_command_creates_booking_and_hides_overlap() -> Non
     assert booking is not None
     assert booking.service == "Окрашивание"
     assert booking.duration_minutes == 180
-    assert booking.ends_at == (starts_at + timedelta(hours=3)).replace(tzinfo=UTC)
+    assert booking.ends_at.replace(tzinfo=None) == starts_at + timedelta(hours=3)
     assert attempt.kind == "booking_confirmation"
     assert "Окрашивание" in attempt.text
     assert available_slots == [after_manual]
@@ -217,6 +219,82 @@ def test_admin_can_close_slot_and_rest_of_day() -> None:
     assert second_slot not in available_slots
     assert occupied_slot not in available_slots
     assert fourth_slot not in available_slots
+
+
+def test_admin_dashboard_and_metrics_show_bookings_clients_and_people_metrics() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    now = datetime(2026, 6, 24, 8, 0, tzinfo=UTC)
+
+    with Session(engine, expire_on_commit=False) as session:
+        client = _create_client(session)
+        upcoming_slot = _create_slot(session, starts_at=now + timedelta(days=1))
+        completed_slot = _create_slot(session, starts_at=now - timedelta(hours=2))
+        session.add(
+            Booking(
+                client=client,
+                slot=upcoming_slot,
+                service="haircut_male",
+                starts_at=upcoming_slot.starts_at,
+                ends_at=upcoming_slot.ends_at,
+                duration_minutes=60,
+                place="Test studio",
+                price_amount=Decimal("100.00"),
+                status=BookingStatus.CONFIRMED,
+            )
+        )
+        session.add(
+            Booking(
+                client=client,
+                slot=completed_slot,
+                service="haircut_male",
+                starts_at=completed_slot.starts_at,
+                ends_at=completed_slot.ends_at,
+                duration_minutes=60,
+                place="Test studio",
+                price_amount=Decimal("100.00"),
+                final_amount=Decimal("100.00"),
+                status=BookingStatus.COMPLETED,
+            )
+        )
+        session.commit()
+
+        dashboard = handle_admin_dashboard(
+            session,
+            _settings(),
+            telegram_user_id=111,
+            now=now,
+        )
+        metrics = handle_admin_metrics_dashboard(
+            session,
+            _settings(),
+            telegram_user_id=111,
+            now=now,
+        )
+
+    assert "Админ-панель" in dashboard.text
+    assert "Ближайших записей: 1" in dashboard.text
+    assert "Клиентов: 1" in dashboard.text
+    assert "Клиентов с будущей записью: 1" in dashboard.text
+    assert "Неделя: 1 завершено, 100 GEL" in dashboard.text
+    assert "Test Client" in dashboard.text
+    assert tuple(button.label for button in dashboard.buttons) == (
+        "Записи",
+        "Клиенты",
+        "Метрики",
+        "Создать запись",
+        "Закрыть время",
+        "Сегодня",
+        "Бонусы",
+    )
+
+    assert "Метрики" in metrics.text
+    assert "Клиентов всего: 1" in metrics.text
+    assert "Клиентов с будущей записью: 1" in metrics.text
+    assert "Клиентов с завершенными визитами: 1" in metrics.text
+    assert "Выручка: 100 GEL" in metrics.text
+    assert "Нетто: 100 GEL" in metrics.text
+    assert "Test Client #1: 1 визитов, 100 GEL" in metrics.text
 
 
 def test_admin_reschedule_notifies_client() -> None:

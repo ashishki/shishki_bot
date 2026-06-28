@@ -230,7 +230,7 @@ Acceptance-Criteria:
     description: "Only allowlisted Telegram IDs can access admin handlers."
     test: "tests/test_admin_auth.py::test_admin_allowlist_required"
   - id: AC-2
-    description: "Admin menu exposes today, this week, manual booking, change booking, cancel booking, revenue, and clients actions."
+    description: "Admin menu exposes records, clients, metrics, manual booking, slot closing, today, and referral bonus actions."
     test: "tests/test_admin_auth.py::test_admin_menu_actions"
 
 Files:
@@ -750,3 +750,48 @@ Context-Refs:
   - docs/spec.md#feature-3---complex-service-redirect-and-manual-booking
   - docs/spec.md#feature-4---admin-booking-management
   - docs/IMPLEMENTATION_CONTRACT.md#booking-integrity
+
+## T21: Admin Dashboard And Price-Free Reminders
+
+Owner:      codex
+Phase:      5
+Type:       none
+Depends-On: T20
+Status:     [x] complete
+Completed:  2026-06-28
+
+Objective: |
+  Make `/admin` a useful operational dashboard for bookings, clients, and
+  people metrics, and ensure client reminder messages do not mention price.
+
+Acceptance-Criteria:
+  - id: AC-1
+    description: "Admin dashboard shows upcoming bookings, client counts, free slots, weekly revenue, pending bonuses, and quick controls."
+    test: "tests/test_admin_booking.py::test_admin_dashboard_and_metrics_show_bookings_clients_and_people_metrics"
+  - id: AC-2
+    description: "Admin metrics screen shows weekly revenue and top clients by completed visits/spend."
+    test: "tests/test_admin_booking.py::test_admin_dashboard_and_metrics_show_bookings_clients_and_people_metrics"
+  - id: AC-3
+    description: "Client reminder messages include appointment details and map links but do not include price."
+    test: "tests/test_notifications.py::test_reminder_message_contains_required_fields_and_location_links"
+
+Files:
+  - app/bot/handlers/admin.py
+  - app/bot/keyboards.py
+  - app/bot/messages.py
+  - tests/test_admin_auth.py
+  - tests/test_admin_booking.py
+  - tests/test_notifications.py
+  - docs/ADMIN_GUIDE.md
+  - docs/spec.md
+  - docs/PROJECT_BRIEF.md
+  - docs/CODEX_PROMPT.md
+  - docs/tasks.md
+  - docs/IMPLEMENTATION_JOURNAL.md
+  - docs/EVIDENCE_INDEX.md
+
+Context-Refs:
+  - docs/spec.md#feature-4---admin-booking-management
+  - docs/spec.md#feature-5---reminders-and-notifications
+  - docs/IMPLEMENTATION_CONTRACT.md#admin-authorization
+  - docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity

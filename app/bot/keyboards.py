@@ -66,14 +66,12 @@ class MenuButton:
 
 
 _ADMIN_MENU_LAYOUT: tuple[tuple[AdminMenuAction, str], ...] = (
-    (AdminMenuAction.TODAY, "Сегодня"),
-    (AdminMenuAction.THIS_WEEK, "Ближайшие даты"),
-    (AdminMenuAction.CLOSE_SLOTS, "Закрыть время"),
-    (AdminMenuAction.MANUAL_BOOKING, "Создать запись"),
-    (AdminMenuAction.CHANGE_BOOKING, "Перенести запись"),
-    (AdminMenuAction.CANCEL_BOOKING, "Отменить запись"),
-    (AdminMenuAction.REVENUE, "Выручка"),
+    (AdminMenuAction.THIS_WEEK, "Записи"),
     (AdminMenuAction.CLIENTS, "Клиенты"),
+    (AdminMenuAction.REVENUE, "Метрики"),
+    (AdminMenuAction.MANUAL_BOOKING, "Создать запись"),
+    (AdminMenuAction.CLOSE_SLOTS, "Закрыть время"),
+    (AdminMenuAction.TODAY, "Сегодня"),
     (AdminMenuAction.REFERRAL_BONUSES, "Бонусы"),
 )
 

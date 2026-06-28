@@ -64,7 +64,7 @@ from app.services.referrals import (
     referral_progress,
 )
 
-ADMIN_MENU_TEXT = "Админ-меню"
+ADMIN_MENU_TEXT = "Админ-панель"
 ADMIN_ACCESS_DENIED_TEXT = "Нет доступа к админке"
 UNKNOWN_ADMIN_ACTION_TEXT = "Неизвестное действие"
 NO_CLIENTS_TEXT = "Клиентов пока нет. Они появятся после первой записи через бота."
@@ -73,6 +73,10 @@ NO_BOOKINGS_TEXT = "На эту дату записей пока нет."
 BOOKING_NOT_FOUND_TEXT = "Запись не найдена."
 NO_AVAILABLE_SLOTS_TEXT = "Свободных слотов пока нет."
 NO_REFERRAL_BONUSES_TEXT = "Бонусов к выдаче пока нет."
+ADMIN_ACTIVE_BOOKING_STATUSES = (
+    BookingStatus.CONFIRMED,
+    BookingStatus.RESCHEDULED,
+)
 MANUAL_BOOKING_HELP_TEXT = "\n".join(
     [
         "Создать ручную запись:",
@@ -178,6 +182,134 @@ def handle_admin_menu_command(
 ) -> AdminMenuResponse:
     require_admin_user(telegram_user_id, settings)
     return AdminMenuResponse(text=ADMIN_MENU_TEXT, buttons=admin_menu_buttons())
+
+
+def handle_admin_dashboard(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    now: datetime | None = None,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    current_time = now or datetime.now(UTC)
+    today = _datetime_local(current_time, settings).date()
+    today_bookings = tuple(
+        booking
+        for booking in _bookings_for_date(session, settings, today)
+        if booking.status in ADMIN_ACTIVE_BOOKING_STATUSES
+    )
+    upcoming_bookings = _upcoming_bookings(session, settings, now=current_time)
+    upcoming_client_count = len({booking.client_id for booking in upcoming_bookings})
+    client_count = _client_count(session)
+    available_slot_count = len(list_available_slots(session, now=current_time))
+    revenue = weekly_revenue_summary(
+        session,
+        week_start=_week_start(current_time, settings),
+    )
+    pending_bonus_count = len(pending_referral_bonuses(session))
+
+    lines = [
+        ADMIN_MENU_TEXT,
+        "",
+        f"Сегодня записей: {len(today_bookings)}",
+        f"Ближайших записей: {len(upcoming_bookings)}",
+        f"Свободных слотов: {available_slot_count}",
+        f"Клиентов: {client_count}",
+        f"Клиентов с будущей записью: {upcoming_client_count}",
+        (
+            "Неделя: "
+            f"{revenue.completed_count} завершено, "
+            f"{_format_money(revenue.gross_revenue)} GEL"
+        ),
+        f"Бонусов к выдаче: {pending_bonus_count}",
+        "",
+        "Ближайшие записи:",
+    ]
+    if upcoming_bookings:
+        lines.extend(
+            _booking_line(booking, settings) for booking in upcoming_bookings[:5]
+        )
+    else:
+        lines.append("нет")
+
+    return AdminRuntimeResponse(
+        text="\n".join(lines),
+        buttons=_admin_dashboard_buttons(),
+    )
+
+
+def handle_admin_metrics_dashboard(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    now: datetime | None = None,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    current_time = now or datetime.now(UTC)
+    revenue = weekly_revenue_summary(
+        session,
+        week_start=_week_start(current_time, settings),
+    )
+    client_count = _client_count(session)
+    upcoming_client_count = len(
+        {
+            booking.client_id
+            for booking in _upcoming_bookings(session, settings, now=current_time)
+        }
+    )
+    client_cards = _client_metric_cards(session)
+    completed_client_count = sum(1 for card in client_cards if card.visit_count)
+
+    lines = [
+        "Метрики",
+        "",
+        f"Клиентов всего: {client_count}",
+        f"Клиентов с будущей записью: {upcoming_client_count}",
+        f"Клиентов с завершенными визитами: {completed_client_count}",
+        "",
+        "Неделя:",
+        f"Завершено визитов: {revenue.completed_count}",
+        f"Выручка: {_format_money(revenue.gross_revenue)} GEL",
+        f"Расходы: {_format_money(revenue.total_expenses)} GEL",
+        f"Нетто: {_format_money(revenue.estimated_net)} GEL",
+        "",
+        "Топ клиентов:",
+    ]
+    top_clients = tuple(card for card in client_cards if card.visit_count)[:5]
+    if top_clients:
+        lines.extend(
+            (
+                f"- {_html(card.display_name)} #{card.client_id}: "
+                f"{card.visit_count} визитов, {_format_money(card.total_spent)} GEL"
+            )
+            for card in top_clients
+        )
+    else:
+        lines.append("пока нет завершенных визитов")
+
+    buttons = tuple(
+        AdminRuntimeButton(
+            label=f"Клиент #{card.client_id}",
+            callback_data=admin_callback_data(
+                AdminMenuAction.CLIENT_CARD,
+                card.client_id,
+            ),
+        )
+        for card in top_clients
+    )
+    return AdminRuntimeResponse(
+        text="\n".join(lines),
+        buttons=buttons
+        + (
+            AdminRuntimeButton(
+                label="Все клиенты",
+                callback_data=admin_callback_data(AdminMenuAction.CLIENTS),
+            ),
+            _admin_menu_button(),
+        ),
+    )
 
 
 def handle_admin_callback(
@@ -1052,6 +1184,29 @@ def build_admin_router(
     @router.message(Command("admin"))
     async def admin_menu(message: Message) -> None:
         telegram_user_id = message.from_user.id if message.from_user else None
+        if async_session_factory is not None:
+            async with async_session_factory() as async_session:
+                try:
+                    response = await async_session.run_sync(
+                        lambda session: handle_admin_dashboard(
+                            session,
+                            settings,
+                            telegram_user_id=telegram_user_id,
+                        )
+                    )
+                except AdminAccessDenied:
+                    await async_session.rollback()
+                    await message.answer(ADMIN_ACCESS_DENIED_TEXT)
+                    return
+                await async_session.rollback()
+
+            await message.answer(
+                response.text,
+                reply_markup=_runtime_keyboard(response.buttons),
+                parse_mode="HTML",
+            )
+            return
+
         try:
             response = handle_admin_menu_command(telegram_user_id, settings)
         except AdminAccessDenied:
@@ -1286,6 +1441,15 @@ def build_admin_router(
                 )
                 await async_session.commit()
                 return response
+        if async_session_factory is not None and action is AdminMenuAction.REVENUE:
+            async with async_session_factory() as async_session:
+                return await async_session.run_sync(
+                    lambda session: handle_admin_metrics_dashboard(
+                        session,
+                        settings,
+                        telegram_user_id=telegram_user_id,
+                    )
+                )
         if action is AdminMenuAction.MANUAL_BOOKING:
             require_admin_user(telegram_user_id, settings)
             return AdminRuntimeResponse(
@@ -1388,6 +1552,15 @@ def build_admin_router(
                 await async_session.commit()
                 return attempt.response
         if action is AdminMenuAction.MENU:
+            if async_session_factory is not None:
+                async with async_session_factory() as async_session:
+                    return await async_session.run_sync(
+                        lambda session: handle_admin_dashboard(
+                            session,
+                            settings,
+                            telegram_user_id=telegram_user_id,
+                        )
+                    )
             menu = handle_admin_menu_command(telegram_user_id, settings)
             return AdminRuntimeResponse(
                 text=menu.text,
@@ -1674,6 +1847,39 @@ def _parse_two_ints(value: str | None) -> tuple[int, int]:
     return _parse_int_value(left), _parse_int_value(right)
 
 
+def _admin_dashboard_buttons() -> tuple[AdminRuntimeButton, ...]:
+    return (
+        AdminRuntimeButton(
+            label="Записи",
+            callback_data=admin_callback_data(AdminMenuAction.THIS_WEEK),
+        ),
+        AdminRuntimeButton(
+            label="Клиенты",
+            callback_data=admin_callback_data(AdminMenuAction.CLIENTS),
+        ),
+        AdminRuntimeButton(
+            label="Метрики",
+            callback_data=admin_callback_data(AdminMenuAction.REVENUE),
+        ),
+        AdminRuntimeButton(
+            label="Создать запись",
+            callback_data=admin_callback_data(AdminMenuAction.MANUAL_BOOKING),
+        ),
+        AdminRuntimeButton(
+            label="Закрыть время",
+            callback_data=admin_callback_data(AdminMenuAction.CLOSE_SLOTS),
+        ),
+        AdminRuntimeButton(
+            label="Сегодня",
+            callback_data=admin_callback_data(AdminMenuAction.TODAY),
+        ),
+        AdminRuntimeButton(
+            label="Бонусы",
+            callback_data=admin_callback_data(AdminMenuAction.REFERRAL_BONUSES),
+        ),
+    )
+
+
 def _clients_button() -> AdminRuntimeButton:
     return AdminRuntimeButton(
         label="Назад к клиентам",
@@ -1683,7 +1889,7 @@ def _clients_button() -> AdminRuntimeButton:
 
 def _admin_menu_button() -> AdminRuntimeButton:
     return AdminRuntimeButton(
-        label="Админ-меню",
+        label="Главная",
         callback_data=admin_callback_data(AdminMenuAction.MENU),
     )
 
@@ -1756,6 +1962,47 @@ def _client_bookings(
     return tuple(session.scalars(statement))
 
 
+def _upcoming_bookings(
+    session: Session,
+    settings: Settings,
+    *,
+    now: datetime,
+) -> tuple[Booking, ...]:
+    cutoff = _datetime_local(now, settings)
+    bookings = tuple(
+        booking
+        for booking in session.scalars(select(Booking).order_by(Booking.starts_at))
+        if booking.status in ADMIN_ACTIVE_BOOKING_STATUSES
+        and _booking_local_start(booking, settings) > cutoff
+    )
+    return tuple(
+        sorted(
+            bookings,
+            key=lambda booking: _booking_local_start(booking, settings),
+        )
+    )
+
+
+def _client_count(session: Session) -> int:
+    return session.scalar(select(func.count(Client.id))) or 0
+
+
+def _client_metric_cards(session: Session) -> tuple[ClientCard, ...]:
+    clients = tuple(session.scalars(select(Client).order_by(Client.id)))
+    cards = tuple(
+        client_card_summary(session, client_id=client.id)
+        for client in clients
+        if client.id is not None
+    )
+    return tuple(
+        sorted(
+            cards,
+            key=lambda card: (card.total_spent, card.visit_count, card.client_id),
+            reverse=True,
+        )
+    )
+
+
 def _bookings_for_date(
     session: Session,
     settings: Settings,
@@ -1799,6 +2046,12 @@ def _schedule_dates(
     return tuple(sorted(dates))
 
 
+def _week_start(value: datetime, settings: Settings) -> datetime:
+    local_value = _datetime_local(value, settings)
+    start = local_value - timedelta(days=local_value.weekday())
+    return start.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
 def _booking_line(booking: Booking, settings: Settings) -> str:
     starts_at = _booking_local_start(booking, settings)
     client = booking.client
@@ -1823,10 +2076,7 @@ def _booking_local_date(booking: Booking, settings: Settings) -> date:
 
 
 def _booking_local_start(booking: Booking, settings: Settings) -> datetime:
-    starts_at = booking.starts_at
-    if starts_at.tzinfo is None:
-        starts_at = starts_at.replace(tzinfo=settings.timezone_info)
-    return starts_at.astimezone(settings.timezone_info)
+    return _datetime_local(booking.starts_at, settings)
 
 
 def _slot_local_date(slot: Slot, settings: Settings) -> date:
@@ -1834,10 +2084,13 @@ def _slot_local_date(slot: Slot, settings: Settings) -> date:
 
 
 def _slot_local_start(slot: Slot, settings: Settings) -> datetime:
-    starts_at = slot.starts_at
-    if starts_at.tzinfo is None:
-        starts_at = starts_at.replace(tzinfo=settings.timezone_info)
-    return starts_at.astimezone(settings.timezone_info)
+    return _datetime_local(slot.starts_at, settings)
+
+
+def _datetime_local(value: datetime, settings: Settings) -> datetime:
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=settings.timezone_info)
+    return value.astimezone(settings.timezone_info)
 
 
 def _format_date_label(value: date) -> str:
@@ -1851,6 +2104,10 @@ def _format_datetime(value: datetime) -> str:
         f"{value.day} {_MONTHS_RU[value.month]}, "
         f"{_WEEKDAYS_RU[value.weekday()]} {value:%H:%M}"
     )
+
+
+def _format_money(value: Decimal) -> str:
+    return f"{value:.2f}".rstrip("0").rstrip(".")
 
 
 def _service_label(value: str) -> str:
