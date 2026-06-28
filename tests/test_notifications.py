@@ -129,6 +129,8 @@ def test_reminder_message_contains_required_fields_and_location_links() -> None:
     assert '<a href="https://yandex.example/test">Yandex</a>' in message
     assert '<a href="https://google.example/test">Google</a>' in message
     assert "Моя запись" in message
+    assert "GEL" not in message
+    assert "100" not in message
 
 
 def test_notification_delivery_is_logged() -> None:

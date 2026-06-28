@@ -65,14 +65,12 @@ def test_admin_allowlist_required() -> None:
 def test_admin_menu_actions() -> None:
     settings = _settings()
     expected_actions = (
-        AdminMenuAction.TODAY,
         AdminMenuAction.THIS_WEEK,
-        AdminMenuAction.CLOSE_SLOTS,
-        AdminMenuAction.MANUAL_BOOKING,
-        AdminMenuAction.CHANGE_BOOKING,
-        AdminMenuAction.CANCEL_BOOKING,
-        AdminMenuAction.REVENUE,
         AdminMenuAction.CLIENTS,
+        AdminMenuAction.REVENUE,
+        AdminMenuAction.MANUAL_BOOKING,
+        AdminMenuAction.CLOSE_SLOTS,
+        AdminMenuAction.TODAY,
         AdminMenuAction.REFERRAL_BONUSES,
     )
 
@@ -81,14 +79,12 @@ def test_admin_menu_actions() -> None:
     response = build_admin_menu_response(111, settings)
     assert tuple(button.action for button in response.buttons) == expected_actions
     assert tuple(button.label for button in response.buttons) == (
-        "Сегодня",
-        "Ближайшие даты",
-        "Закрыть время",
-        "Создать запись",
-        "Перенести запись",
-        "Отменить запись",
-        "Выручка",
+        "Записи",
         "Клиенты",
+        "Метрики",
+        "Создать запись",
+        "Закрыть время",
+        "Сегодня",
         "Бонусы",
     )
     assert tuple(button.callback_data for button in response.buttons) == tuple(

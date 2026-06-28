@@ -530,26 +530,24 @@ Reminder: your haircut is tomorrow.
 Date: {date}
 Time: {time}
 Place: {place}
-Price: {100_or_120_GEL}
 
 ## Reminder a few hours before
 
 Reminder: your haircut is today at {time}.
 
 Place: {place}
-Price: {100_or_120_GEL}.
 
 ## Admin menu
 
 Buttons:
 
-* Today
-* This week
-* New manual booking
-* Change booking
-* Cancel booking
-* Revenue
+* Records
 * Clients
+* Metrics
+* New manual booking
+* Close time
+* Today
+* Bonuses
 
 ## Weekly revenue summary
 

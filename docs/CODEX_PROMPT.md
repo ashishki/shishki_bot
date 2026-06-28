@@ -8,10 +8,10 @@ Phase: 5
 ## Current State
 
 - Phase: 5
-- Baseline: T20 complete; task graph complete with 85 total tests.
+- Baseline: T21 complete; task graph complete with 86 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-28 - ruff check, ruff format --check, pytest `tests -q` (85 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-28 - ruff check, ruff format --check, pytest `tests -q` (86 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,7 +29,7 @@ Phase: 5
 
 ## Next Task
 
-none - implementation task graph complete through T20.
+none - implementation task graph complete through T21.
 
 For future changes, read:
 
@@ -174,6 +174,10 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   added admin-visible client identity/chat in booking messages, allowed manual
   booking by client ID or Telegram username, added admin slot/day closing
   commands, and updated the live July schedule after backup.
+- 2026-06-28 - T21 Admin Dashboard And Price-Free Reminders: changed
+  `/admin` into a live dashboard with upcoming bookings, client counts, free
+  slots, weekly metrics, pending bonuses, people metrics, and quick controls;
+  reminder messages are covered by tests to avoid showing price.
 
 ## Completed Bootstrap Work
 
@@ -189,7 +193,8 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   background bot process with PID recorded in `bot.pid`.
 - Reminder delivery is wired into runtime: `app.main` starts the reminder
   scheduler with the bot, due reminders are sent through Telegram, and the
-  current systemd service has been restarted on the updated code.
+  current systemd service has been restarted on the updated code. Reminder
+  messages do not include appointment price.
 - Client menu includes an `О мастере` option that sends `IMG_9385.PNG` with
   the text from `about_me.md` and follow-up buttons for booking/contact.
 - Client menu includes `Рекомендации`; personal deep links are recorded through
@@ -213,6 +218,11 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   ID, and chat link when available.
 - Admin can hide free time with `/close <YYYY-MM-DD> <HH:MM>` or close the
   remaining free slots in a day with `/close_day <YYYY-MM-DD> <HH:MM>`.
+- `/admin` opens the admin dashboard: upcoming bookings with client links,
+  client counts, free slots, weekly revenue, pending bonuses, and quick controls
+  for records, clients, metrics, manual booking, slot closing, today, and
+  bonuses. The metrics screen shows weekly revenue/net and top clients by
+  completed visits/spend.
 - Live local database was backed up to
   `/srv/openclaw-you/backups/shishki_bot/shishki_bot_before_official_slots_20260624_130105.db`
   before clearing test booking/slot records. Active official slots are
