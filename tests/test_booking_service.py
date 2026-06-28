@@ -11,6 +11,8 @@ from app.db.models import Base, BookingStatus, Client, Slot, User
 from app.services.booking import (
     DEFAULT_HAIRCUT_DURATION_MINUTES,
     DEFAULT_HAIRCUT_PRICE,
+    HAIRCUT_FEMALE_SERVICE,
+    HAIRCUT_MALE_SERVICE,
     SlotUnavailableError,
     UnsupportedSelfBookServiceError,
     create_haircut_booking,
@@ -37,13 +39,35 @@ def test_create_haircut_booking() -> None:
         session.commit()
 
     assert booking.status is BookingStatus.CONFIRMED
-    assert booking.service == "haircut"
+    assert booking.service == HAIRCUT_MALE_SERVICE
     assert booking.price_amount == DEFAULT_HAIRCUT_PRICE
     assert booking.duration_minutes == DEFAULT_HAIRCUT_DURATION_MINUTES
     assert booking.starts_at == starts_at
     assert booking.ends_at == starts_at + timedelta(hours=1)
     assert booking.place == "Test studio"
     assert len(booking.status_history) == 1
+
+
+def test_create_female_haircut_booking() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    starts_at = datetime.now(UTC) + timedelta(days=1)
+
+    with Session(engine, expire_on_commit=False) as session:
+        client = _create_client(session)
+        slot = _create_slot(session, starts_at=starts_at)
+
+        booking = create_haircut_booking(
+            session,
+            client_id=client.id,
+            slot_id=slot.id,
+            service=HAIRCUT_FEMALE_SERVICE,
+        )
+        session.commit()
+
+    assert booking.status is BookingStatus.CONFIRMED
+    assert booking.service == HAIRCUT_FEMALE_SERVICE
+    assert booking.price_amount == Decimal("120.00")
 
 
 def test_prevent_double_booking(tmp_path) -> None:

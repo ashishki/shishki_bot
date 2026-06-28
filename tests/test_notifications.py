@@ -41,12 +41,12 @@ def test_confirmation_message_contains_required_fields() -> None:
 
     message = booking_confirmation_message(booking)
 
-    assert "Стрижка" in message
+    assert "Мужская стрижка" in message
     assert "24 июня, среда" in message
     assert "10:00" in message
     assert "Test studio" in message
     assert "60 мин" in message
-    assert "90 GEL" in message
+    assert "100 GEL" in message
     assert "Если нужно изменить запись" in message
     assert "Моя запись" in message
 
@@ -84,7 +84,7 @@ def test_change_notifications_contain_required_fields() -> None:
     cancelled = booking_cancelled_message(booking, reason="client request")
 
     for message in (rescheduled, cancelled):
-        assert "Стрижка" in message
+        assert "Мужская стрижка" in message
         assert "24 июня, среда" in message
         assert "10:00" in message
         assert "Test studio" in message
@@ -100,11 +100,14 @@ def test_admin_new_booking_message_contains_required_fields() -> None:
     message = admin_new_booking_message(booking, timezone=ZoneInfo("Asia/Tbilisi"))
 
     assert "Новая запись" in message
-    assert "Стрижка" in message
+    assert "Мужская стрижка" in message
     assert "24 июня, среда" in message
     assert "10:00" in message
     assert "Test studio" in message
-    assert "90 GEL" in message
+    assert "100 GEL" in message
+    assert "Test User" in message
+    assert "ID клиента:" in message
+    assert "tg://user?id=123" in message
 
 
 def test_reminder_message_contains_required_fields_and_location_links() -> None:
@@ -119,7 +122,7 @@ def test_reminder_message_contains_required_fields_and_location_links() -> None:
     )
 
     assert "Напоминание: запись завтра" in message
-    assert "Стрижка" in message
+    assert "Мужская стрижка" in message
     assert "27 июня, суббота" in message
     assert "10:00" in message
     assert "Адрес: Test studio" in message
@@ -200,12 +203,12 @@ def _booking(*, starts_at: datetime | None = None) -> Booking:
             ends_at=starts_at + timedelta(hours=1),
             place="Test studio",
         ),
-        service="haircut",
+        service="haircut_male",
         starts_at=starts_at,
         ends_at=starts_at + timedelta(hours=1),
         duration_minutes=60,
         place="Test studio",
-        price_amount=Decimal("90.00"),
+        price_amount=Decimal("100.00"),
         status=BookingStatus.CONFIRMED,
     )
 

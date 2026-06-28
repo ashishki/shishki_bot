@@ -6,6 +6,7 @@ from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from html import escape
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from app.bot.keyboards import (
     parse_client_callback_data,
 )
 from app.bot.messages import (
+    admin_booking_client_lines,
     admin_new_booking_message,
     booking_cancelled_message,
     booking_confirmation_message,
@@ -41,12 +43,17 @@ from app.db.models import (
 from app.services.booking import (
     ACTIVE_BOOKING_STATUSES,
     DEFAULT_HAIRCUT_DURATION_MINUTES,
-    DEFAULT_HAIRCUT_PRICE,
-    HAIRCUT_SERVICE,
+    DEFAULT_HAIRCUT_SERVICE,
+    HAIRCUT_FEMALE_SERVICE,
+    HAIRCUT_MALE_SERVICE,
+    HAIRCUT_SERVICES,
     SlotUnavailableError,
     cancel_booking_by_client,
     create_haircut_booking,
+    haircut_price_for_service,
+    haircut_service_label,
     list_available_slots,
+    normalize_haircut_service,
     reschedule_booking_by_client,
 )
 from app.services.referrals import (
@@ -58,8 +65,6 @@ from app.services.referrals import (
     register_referral_start,
 )
 
-HAIRCUT_PRICE_LABEL = str(DEFAULT_HAIRCUT_PRICE).rstrip("0").rstrip(".")
-
 CLIENT_WELCOME_TEXT = "\n".join(
     [
         "Привет!",
@@ -70,6 +75,7 @@ CLIENT_WELCOME_TEXT = "\n".join(
     ]
 )
 NO_AVAILABLE_SLOTS_TEXT = "Свободных дат пока нет."
+HAIRCUT_SERVICE_CHOICE_TEXT = "Выберите тип стрижки."
 HAIRCUT_DATE_LIST_TEXT = "Выберите дату для стрижки."
 HAIRCUT_SLOT_LIST_TEXT = "Выберите время:"
 HAIRCUT_CONFIRM_TEXT = "Подтвердить запись?"
@@ -183,21 +189,28 @@ def handle_haircut_booking_start(
     session: Session,
     settings: Settings,
     *,
+    service: str | None = None,
     now: datetime | None = None,
 ) -> ClientMenuResponse:
+    if service is None:
+        return ClientMenuResponse(
+            text=HAIRCUT_SERVICE_CHOICE_TEXT,
+            buttons=_haircut_service_choice_buttons()
+            + (_my_booking_button(), _main_menu_button()),
+        )
+
+    service = _parse_haircut_service(service)
     slots = tuple(list_available_slots(session, now=now))
     if not slots:
         return ClientMenuResponse(
             text=NO_AVAILABLE_SLOTS_TEXT,
-            buttons=_service_choice_buttons(
-                include_haircut=False,
-                include_my_booking=True,
-            ),
+            buttons=_haircut_service_choice_buttons()
+            + (_my_booking_button(), _main_menu_button()),
         )
 
     return ClientMenuResponse(
         text=HAIRCUT_DATE_LIST_TEXT,
-        buttons=_date_buttons(slots, settings)
+        buttons=_date_buttons(slots, settings, service=service)
         + (_my_booking_button(), _main_menu_button()),
     )
 
@@ -207,8 +220,10 @@ def handle_haircut_date_selection(
     settings: Settings,
     *,
     selected_date: date,
+    service: str = DEFAULT_HAIRCUT_SERVICE,
     now: datetime | None = None,
 ) -> SlotListResponse:
+    service = _parse_haircut_service(service)
     slots = tuple(
         slot
         for slot in list_available_slots(session, now=now)
@@ -218,14 +233,17 @@ def handle_haircut_date_selection(
         return SlotListResponse(
             text=NO_AVAILABLE_SLOTS_TEXT,
             slots=(),
-            buttons=(_dates_button(label="Назад к датам"), _main_menu_button()),
+            buttons=(
+                _dates_button(label="Назад к датам", service=service),
+                _main_menu_button(),
+            ),
         )
 
     return SlotListResponse(
         text=f"{HAIRCUT_SLOT_LIST_TEXT} {_format_date_label(selected_date)}",
-        slots=tuple(_slot_option(slot, settings) for slot in slots),
+        slots=tuple(_slot_option(slot, settings, service=service) for slot in slots),
         buttons=(
-            _dates_button(label="Назад к датам"),
+            _dates_button(label="Назад к датам", service=service),
             _my_booking_button(),
             _main_menu_button(),
         ),
@@ -237,29 +255,20 @@ def handle_haircut_slot_selection(
     settings: Settings,
     *,
     slot_id: int,
+    service: str = DEFAULT_HAIRCUT_SERVICE,
     now: datetime | None = None,
 ) -> ClientTextResponse:
-    available_slot_ids = {
-        slot.id
-        for slot in list_available_slots(session, now=now)
-        if slot.id is not None
-    }
-    if slot_id not in available_slot_ids:
-        raise SlotUnavailableError(f"Slot is unavailable: {slot_id}")
-
-    slot = session.get(Slot, slot_id)
-    if slot is None:
-        raise SlotUnavailableError(f"Slot is unavailable: {slot_id}")
+    service = _parse_haircut_service(service)
+    slot = _require_available_slot(session, slot_id=slot_id, now=now)
 
     return ClientTextResponse(
-        text="\n".join(
-            [
-                HAIRCUT_CONFIRM_TEXT,
-                f"Время: {_format_slot_label(slot, settings)}",
-                _settings_location_line(slot.place, settings),
-                f"Длительность: {DEFAULT_HAIRCUT_DURATION_MINUTES} мин",
-                f"Цена: {HAIRCUT_PRICE_LABEL} GEL",
-            ]
+        text=_slot_selection_text(
+            title=HAIRCUT_CONFIRM_TEXT,
+            service_label=haircut_service_label(service),
+            slot=slot,
+            settings=settings,
+            duration_minutes=DEFAULT_HAIRCUT_DURATION_MINUTES,
+            price_amount=haircut_price_for_service(service),
         )
     )
 
@@ -270,12 +279,14 @@ def handle_haircut_booking_confirmation(
     *,
     telegram_user_id: int | None,
     slot_id: int,
+    service: str = DEFAULT_HAIRCUT_SERVICE,
     display_name: str | None = None,
     username: str | None = None,
     now: datetime | None = None,
 ) -> ClientBookingResponse:
     if telegram_user_id is None:
         raise ClientIdentityRequired("Telegram user identity is required")
+    service = _parse_haircut_service(service)
 
     client = get_or_create_client(
         session,
@@ -290,7 +301,12 @@ def handle_haircut_booking_confirmation(
         slot_id=slot_id,
         now=now,
     )
-    booking = create_haircut_booking(session, client_id=client.id, slot_id=slot_id)
+    booking = create_haircut_booking(
+        session,
+        client_id=client.id,
+        slot_id=slot_id,
+        service=service,
+    )
     return ClientBookingResponse(
         text=booking_confirmation_message(
             booking,
@@ -538,7 +554,16 @@ def handle_client_callback_payload(
         )
 
     if parsed.action == ClientMenuAction.BOOK_HAIRCUT:
-        response = handle_haircut_booking_start(session, settings, now=now)
+        try:
+            service = _parse_haircut_service(parsed.value) if parsed.value else None
+        except ValueError:
+            return ClientCallbackResponse(text=UNKNOWN_ACTION_TEXT)
+        response = handle_haircut_booking_start(
+            session,
+            settings,
+            service=service,
+            now=now,
+        )
         return ClientCallbackResponse(text=response.text, buttons=response.buttons)
 
     if parsed.action in (
@@ -680,13 +705,14 @@ def handle_client_callback_payload(
 
     if parsed.action == ClientMenuAction.SELECT_HAIRCUT_DATE:
         try:
-            selected_date = _parse_date(parsed.value)
+            service, selected_date = _parse_haircut_date_value(parsed.value)
         except ValueError:
             return ClientCallbackResponse(text=UNKNOWN_ACTION_TEXT)
         response = handle_haircut_date_selection(
             session,
             settings,
             selected_date=selected_date,
+            service=service,
             now=now,
         )
         return ClientCallbackResponse(
@@ -697,15 +723,24 @@ def handle_client_callback_payload(
 
     if parsed.action == ClientMenuAction.SELECT_HAIRCUT_SLOT:
         try:
-            slot_id = _parse_slot_id(parsed.value)
+            service, slot_id = _parse_haircut_slot_value(parsed.value)
+        except ValueError:
+            return ClientCallbackResponse(text=UNKNOWN_ACTION_TEXT)
+        try:
             response = handle_haircut_slot_selection(
                 session,
                 settings,
                 slot_id=slot_id,
+                service=service,
                 now=now,
             )
-        except (SlotUnavailableError, ValueError):
-            return _slot_unavailable_haircut_response(session, settings, now=now)
+        except SlotUnavailableError:
+            return _slot_unavailable_haircut_response(
+                session,
+                settings,
+                service=service,
+                now=now,
+            )
 
         return ClientCallbackResponse(
             text=response.text,
@@ -715,35 +750,41 @@ def handle_client_callback_payload(
                     label="Подтвердить запись",
                     callback_data=client_callback_data(
                         ClientMenuAction.CONFIRM_HAIRCUT,
-                        slot_id,
+                        _haircut_slot_value(service, slot_id),
                     ),
                 ),
-                _slot_back_button(session, settings, slot_id),
+                _slot_back_button(session, settings, slot_id, service=service),
                 _main_menu_button(),
             ),
         )
 
     if parsed.action == ClientMenuAction.CONFIRM_HAIRCUT:
         try:
-            slot_id = _parse_slot_id(parsed.value)
+            service, slot_id = _parse_haircut_slot_value(parsed.value)
             response = handle_haircut_booking_confirmation(
                 session,
                 settings,
                 telegram_user_id=telegram_user_id,
                 slot_id=slot_id,
+                service=service,
                 display_name=display_name,
                 username=username,
                 now=now,
             )
         except SlotUnavailableError:
-            return _slot_unavailable_haircut_response(session, settings, now=now)
+            return _slot_unavailable_haircut_response(
+                session,
+                settings,
+                service=service,
+                now=now,
+            )
         except ClientIdentityRequired:
             return ClientCallbackResponse(text=IDENTITY_REQUIRED_TEXT)
         except ClientDailyBookingLimitExceeded:
             return ClientCallbackResponse(
                 text=HAIRCUT_DAILY_LIMIT_TEXT,
                 buttons=(
-                    _dates_button(label="Другие даты"),
+                    _dates_button(label="Другие даты", service=service),
                     _contact_button(label="Написать"),
                     _main_menu_button(),
                 ),
@@ -927,19 +968,21 @@ def handle_reschedule_slot_selection(
     slot_id: int,
     now: datetime | None = None,
 ) -> ClientTextResponse:
-    _require_active_booking_for_user(
+    booking = _require_active_booking_for_user(
         session,
         telegram_user_id=telegram_user_id,
         now=now,
     )
-    response = handle_haircut_slot_selection(
-        session,
-        settings,
-        slot_id=slot_id,
-        now=now,
-    )
+    slot = _require_available_slot(session, slot_id=slot_id, now=now)
     return ClientTextResponse(
-        text=response.text.replace(HAIRCUT_CONFIRM_TEXT, "Подтвердить новое время?"),
+        text=_slot_selection_text(
+            title="Подтвердить новое время?",
+            service_label=haircut_service_label(booking.service),
+            slot=slot,
+            settings=settings,
+            duration_minutes=booking.duration_minutes,
+            price_amount=booking.price_amount,
+        ),
         buttons=(
             MenuButton(
                 action=ClientMenuAction.CONFIRM_RESCHEDULE,
@@ -1089,6 +1132,7 @@ def _admin_booking_notification_text(
         return "\n".join(
             [
                 "Клиент перенес запись",
+                *admin_booking_client_lines(booking),
                 "",
                 booking_rescheduled_message(
                     booking,
@@ -1101,6 +1145,7 @@ def _admin_booking_notification_text(
         return "\n".join(
             [
                 "Клиент отменил запись",
+                *admin_booking_client_lines(booking),
                 "",
                 booking_cancelled_message(
                     booking,
@@ -1469,15 +1514,19 @@ def _slot_option(
     settings: Settings,
     *,
     action: ClientMenuAction = ClientMenuAction.SELECT_HAIRCUT_SLOT,
+    service: str | None = None,
 ) -> SlotOption:
     if slot.id is None:
         raise ValueError("Slot must be flushed before it can be rendered")
+    value: str | int = slot.id
+    if service is not None and action == ClientMenuAction.SELECT_HAIRCUT_SLOT:
+        value = _haircut_slot_value(service, slot.id)
     return SlotOption(
         slot_id=slot.id,
         label=_format_slot_label(slot, settings),
         callback_data=client_callback_data(
             action,
-            slot.id,
+            value,
         ),
     )
 
@@ -1487,6 +1536,7 @@ def _date_buttons(
     settings: Settings,
     *,
     action: ClientMenuAction = ClientMenuAction.SELECT_HAIRCUT_DATE,
+    service: str | None = None,
 ) -> tuple[MenuButton, ...]:
     dates = sorted({_slot_local_date(slot, settings) for slot in slots})
     return tuple(
@@ -1495,18 +1545,27 @@ def _date_buttons(
             label=_format_date_label(value),
             callback_data=client_callback_data(
                 action,
-                value.isoformat(),
+                _haircut_date_value(service, value)
+                if service is not None
+                and action == ClientMenuAction.SELECT_HAIRCUT_DATE
+                else value.isoformat(),
             ),
         )
         for value in dates
     )
 
 
-def _dates_button(*, label: str = "Стрижка") -> MenuButton:
+def _dates_button(
+    *,
+    label: str = "Стрижка",
+    service: str | None = None,
+) -> MenuButton:
     return MenuButton(
         action=ClientMenuAction.BOOK_HAIRCUT,
         label=label,
-        callback_data=client_callback_data(ClientMenuAction.BOOK_HAIRCUT),
+        callback_data=client_callback_data(ClientMenuAction.BOOK_HAIRCUT, service)
+        if service is not None
+        else client_callback_data(ClientMenuAction.BOOK_HAIRCUT),
     )
 
 
@@ -1596,6 +1655,21 @@ def _service_choice_buttons(
     return tuple(buttons)
 
 
+def _haircut_service_choice_buttons() -> tuple[MenuButton, ...]:
+    return (
+        _dates_button(
+            label=f"Мужская стрижка - {_haircut_price_label(HAIRCUT_MALE_SERVICE)} GEL",
+            service=HAIRCUT_MALE_SERVICE,
+        ),
+        _dates_button(
+            label=(
+                f"Женская стрижка - {_haircut_price_label(HAIRCUT_FEMALE_SERVICE)} GEL"
+            ),
+            service=HAIRCUT_FEMALE_SERVICE,
+        ),
+    )
+
+
 def _no_active_booking_response() -> ClientCallbackResponse:
     return ClientCallbackResponse(
         text=NO_ACTIVE_BOOKING_TEXT,
@@ -1607,9 +1681,15 @@ def _slot_unavailable_haircut_response(
     session: Session,
     settings: Settings,
     *,
+    service: str = DEFAULT_HAIRCUT_SERVICE,
     now: datetime | None = None,
 ) -> ClientCallbackResponse:
-    response = handle_haircut_booking_start(session, settings, now=now)
+    response = handle_haircut_booking_start(
+        session,
+        settings,
+        service=service,
+        now=now,
+    )
     return ClientCallbackResponse(
         text=_append_recovery_text(SLOT_UNAVAILABLE_TEXT, response.text),
         buttons=response.buttons,
@@ -1647,17 +1727,23 @@ def _append_recovery_text(primary: str, recovery: str) -> str:
     return f"{primary}\n\n{recovery}"
 
 
-def _slot_back_button(session: Session, settings: Settings, slot_id: int) -> MenuButton:
+def _slot_back_button(
+    session: Session,
+    settings: Settings,
+    slot_id: int,
+    *,
+    service: str = DEFAULT_HAIRCUT_SERVICE,
+) -> MenuButton:
     slot = session.get(Slot, slot_id)
     if slot is None:
-        return _dates_button(label="Назад к датам")
+        return _dates_button(label="Назад к датам", service=service)
     selected_date = _slot_local_date(slot, settings)
     return MenuButton(
         action=ClientMenuAction.SELECT_HAIRCUT_DATE,
         label="Назад ко времени",
         callback_data=client_callback_data(
             ClientMenuAction.SELECT_HAIRCUT_DATE,
-            selected_date.isoformat(),
+            _haircut_date_value(service, selected_date),
         ),
     )
 
@@ -1743,6 +1829,70 @@ def _html_caption(text: str) -> str:
     return escape(text, quote=False)
 
 
+def _require_available_slot(
+    session: Session,
+    *,
+    slot_id: int,
+    now: datetime | None = None,
+) -> Slot:
+    available_slot_ids = {
+        slot.id
+        for slot in list_available_slots(session, now=now)
+        if slot.id is not None
+    }
+    if slot_id not in available_slot_ids:
+        raise SlotUnavailableError(f"Slot is unavailable: {slot_id}")
+
+    slot = session.get(Slot, slot_id)
+    if slot is None:
+        raise SlotUnavailableError(f"Slot is unavailable: {slot_id}")
+    return slot
+
+
+def _slot_selection_text(
+    *,
+    title: str,
+    service_label: str,
+    slot: Slot,
+    settings: Settings,
+    duration_minutes: int,
+    price_amount: Decimal,
+) -> str:
+    return "\n".join(
+        [
+            title,
+            service_label,
+            f"Время: {_format_slot_label(slot, settings)}",
+            _settings_location_line(slot.place, settings),
+            f"Длительность: {duration_minutes} мин",
+            f"Цена: {_format_money(price_amount)} GEL",
+        ]
+    )
+
+
+def _format_money(value: Decimal) -> str:
+    return f"{value:.2f}".rstrip("0").rstrip(".")
+
+
+def _haircut_price_label(service: str) -> str:
+    return _format_money(haircut_price_for_service(service))
+
+
+def _parse_haircut_service(raw_value: str) -> str:
+    try:
+        return normalize_haircut_service(raw_value)
+    except ValueError as exc:
+        raise ValueError("Invalid haircut service") from exc
+
+
+def _haircut_date_value(service: str, selected_date: date) -> str:
+    return f"{_parse_haircut_service(service)}|{selected_date.isoformat()}"
+
+
+def _haircut_slot_value(service: str, slot_id: int) -> str:
+    return f"{_parse_haircut_service(service)}|{slot_id}"
+
+
 def _ensure_haircut_daily_limit(
     session: Session,
     settings: Settings,
@@ -1761,7 +1911,7 @@ def _ensure_haircut_daily_limit(
         session.scalars(
             select(Booking).where(
                 Booking.client_id == client_id,
-                Booking.service == HAIRCUT_SERVICE,
+                Booking.service.in_(HAIRCUT_SERVICES),
                 Booking.status.in_(ACTIVE_BOOKING_STATUSES),
             )
         )
@@ -1821,6 +1971,15 @@ def _parse_slot_id(raw_value: str | None) -> int:
         raise ValueError("Invalid slot ID") from exc
 
 
+def _parse_haircut_slot_value(raw_value: str | None) -> tuple[str, int]:
+    if raw_value is None:
+        raise ValueError("Missing slot ID")
+    if "|" not in raw_value:
+        return DEFAULT_HAIRCUT_SERVICE, _parse_slot_id(raw_value)
+    raw_service, raw_slot_id = raw_value.split("|", maxsplit=1)
+    return _parse_haircut_service(raw_service), _parse_slot_id(raw_slot_id)
+
+
 def _parse_date(raw_value: str | None) -> date:
     if raw_value is None:
         raise ValueError("Missing date")
@@ -1828,6 +1987,15 @@ def _parse_date(raw_value: str | None) -> date:
         return date.fromisoformat(raw_value)
     except ValueError as exc:
         raise ValueError("Invalid date") from exc
+
+
+def _parse_haircut_date_value(raw_value: str | None) -> tuple[str, date]:
+    if raw_value is None:
+        raise ValueError("Missing date")
+    if "|" not in raw_value:
+        return DEFAULT_HAIRCUT_SERVICE, _parse_date(raw_value)
+    raw_service, raw_date = raw_value.split("|", maxsplit=1)
+    return _parse_haircut_service(raw_service), _parse_date(raw_date)
 
 
 _MONTHS_RU = {

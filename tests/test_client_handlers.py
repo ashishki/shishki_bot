@@ -12,6 +12,7 @@ from app.bot.handlers.client import (
     CLIENT_WELCOME_TEXT,
     HAIRCUT_CONFIRM_TEXT,
     HAIRCUT_DATE_LIST_TEXT,
+    HAIRCUT_SERVICE_CHOICE_TEXT,
     SLOT_UNAVAILABLE_TEXT,
     dispatch_client_callback_async,
     handle_about_master_request,
@@ -45,7 +46,11 @@ from app.db.models import (
     Slot,
     User,
 )
-from app.services.booking import DEFAULT_HAIRCUT_PRICE
+from app.services.booking import (
+    DEFAULT_HAIRCUT_PRICE,
+    HAIRCUT_FEMALE_SERVICE,
+    HAIRCUT_MALE_SERVICE,
+)
 
 
 def test_start_menu() -> None:
@@ -136,7 +141,19 @@ def test_client_haircut_booking_flow() -> None:
 
         selected_date = available.starts_at.astimezone(_settings().timezone_info).date()
 
-        date_response = handle_haircut_booking_start(session, _settings(), now=now)
+        choice_response = handle_haircut_booking_start(session, _settings(), now=now)
+        assert choice_response.text == HAIRCUT_SERVICE_CHOICE_TEXT
+        assert tuple(button.label for button in choice_response.buttons[:2]) == (
+            "Мужская стрижка - 100 GEL",
+            "Женская стрижка - 120 GEL",
+        )
+
+        date_response = handle_haircut_booking_start(
+            session,
+            _settings(),
+            service=HAIRCUT_MALE_SERVICE,
+            now=now,
+        )
         assert date_response.text == HAIRCUT_DATE_LIST_TEXT
         assert tuple(button.action for button in date_response.buttons) == (
             ClientMenuAction.SELECT_HAIRCUT_DATE,
@@ -145,13 +162,14 @@ def test_client_haircut_booking_flow() -> None:
         )
         assert date_response.buttons[0].callback_data == client_callback_data(
             ClientMenuAction.SELECT_HAIRCUT_DATE,
-            selected_date.isoformat(),
+            f"{HAIRCUT_MALE_SERVICE}|{selected_date.isoformat()}",
         )
 
         slot_response = handle_haircut_date_selection(
             session,
             _settings(),
             selected_date=selected_date,
+            service=HAIRCUT_MALE_SERVICE,
             now=now,
         )
         assert tuple(slot.slot_id for slot in slot_response.slots) == (available.id,)
@@ -167,13 +185,14 @@ def test_client_haircut_booking_flow() -> None:
         assert past.id not in {slot.slot_id for slot in slot_response.slots}
         assert slot_response.slots[0].callback_data == client_callback_data(
             ClientMenuAction.SELECT_HAIRCUT_SLOT,
-            available.id,
+            f"{HAIRCUT_MALE_SERVICE}|{available.id}",
         )
 
         selection = handle_haircut_slot_selection(
             session,
             _settings(),
             slot_id=available.id,
+            service=HAIRCUT_MALE_SERVICE,
             now=now,
         )
         assert "Подтвердить запись?" in selection.text
@@ -184,6 +203,7 @@ def test_client_haircut_booking_flow() -> None:
             _settings(),
             telegram_user_id=555,
             slot_id=available.id,
+            service=HAIRCUT_MALE_SERVICE,
             display_name="Test Client",
             username="test_client",
         )
@@ -193,14 +213,14 @@ def test_client_haircut_booking_flow() -> None:
         saved_user = session.scalar(select(User).where(User.telegram_id == 555))
 
     assert booking.status is BookingStatus.CONFIRMED
-    assert booking.service == "haircut"
+    assert booking.service == HAIRCUT_MALE_SERVICE
     assert booking.slot_id == available.id
     assert booking.price_amount == DEFAULT_HAIRCUT_PRICE
     assert saved_user is not None
     assert saved_user.client is not None
     assert "Запись подтверждена" in confirmation.text
-    assert "Стрижка" in confirmation.text
-    assert "90 GEL" in confirmation.text
+    assert "Мужская стрижка" in confirmation.text
+    assert "100 GEL" in confirmation.text
 
 
 def test_client_callback_requires_confirmation_before_booking() -> None:
@@ -211,10 +231,26 @@ def test_client_callback_requires_confirmation_before_booking() -> None:
     with Session(engine, expire_on_commit=False) as session:
         slot = _create_slot(session, starts_at=now + timedelta(days=1))
 
-        date_list = handle_client_callback_payload(
+        service_choice = handle_client_callback_payload(
             session,
             _settings(),
             callback_payload=client_callback_data(ClientMenuAction.BOOK_HAIRCUT),
+            telegram_user_id=555,
+            now=now,
+        )
+        assert service_choice.text == HAIRCUT_SERVICE_CHOICE_TEXT
+        assert tuple(button.action for button in service_choice.buttons) == (
+            ClientMenuAction.BOOK_HAIRCUT,
+            ClientMenuAction.BOOK_HAIRCUT,
+            ClientMenuAction.MY_BOOKING,
+            ClientMenuAction.MENU,
+        )
+        assert session.scalar(select(Booking)) is None
+
+        date_list = handle_client_callback_payload(
+            session,
+            _settings(),
+            callback_payload=service_choice.buttons[0].callback_data,
             telegram_user_id=555,
             now=now,
         )
@@ -281,6 +317,63 @@ def test_client_callback_requires_confirmation_before_booking() -> None:
     assert booking.status is BookingStatus.CONFIRMED
 
 
+def test_client_callback_books_female_haircut_with_female_price() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    now = datetime.now(UTC)
+
+    with Session(engine, expire_on_commit=False) as session:
+        slot = _create_slot(session, starts_at=now + timedelta(days=1))
+
+        date_list = handle_client_callback_payload(
+            session,
+            _settings(),
+            callback_payload=client_callback_data(
+                ClientMenuAction.BOOK_HAIRCUT,
+                HAIRCUT_FEMALE_SERVICE,
+            ),
+            telegram_user_id=555,
+            now=now,
+        )
+        assert date_list.text == HAIRCUT_DATE_LIST_TEXT
+
+        slot_list = handle_client_callback_payload(
+            session,
+            _settings(),
+            callback_payload=date_list.buttons[0].callback_data,
+            telegram_user_id=555,
+            now=now,
+        )
+        prompt = handle_client_callback_payload(
+            session,
+            _settings(),
+            callback_payload=slot_list.slots[0].callback_data,
+            telegram_user_id=555,
+            now=now,
+        )
+        assert "Женская стрижка" in prompt.text
+        assert "120 GEL" in prompt.text
+
+        booked = handle_client_callback_payload(
+            session,
+            _settings(),
+            callback_payload=prompt.buttons[0].callback_data,
+            telegram_user_id=555,
+            display_name="Female Client",
+            username="female_client",
+            now=now,
+        )
+        assert booked.should_commit
+        session.commit()
+
+        booking = session.scalar(select(Booking))
+
+    assert booking is not None
+    assert booking.service == HAIRCUT_FEMALE_SERVICE
+    assert booking.price_amount == Decimal("120.00")
+    assert booking.slot_id == slot.id
+
+
 def test_client_cannot_book_more_than_two_haircuts_same_day() -> None:
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
@@ -337,10 +430,19 @@ async def test_async_callback_dispatch_commits_only_confirmation() -> None:
         )
         await async_session.commit()
 
-    date_response = await dispatch_client_callback_async(
+    service_response = await dispatch_client_callback_async(
         session_factory,
         _settings(),
         callback_payload=client_callback_data(ClientMenuAction.BOOK_HAIRCUT),
+        telegram_user_id=555,
+        now=now,
+    )
+    assert len(service_response.buttons) == 4
+
+    date_response = await dispatch_client_callback_async(
+        session_factory,
+        _settings(),
+        callback_payload=service_response.buttons[0].callback_data,
         telegram_user_id=555,
         now=now,
     )
@@ -416,10 +518,17 @@ async def test_admins_are_notified_after_client_self_booking() -> None:
         )
         await async_session.commit()
 
-    date_response = await dispatch_client_callback_async(
+    service_response = await dispatch_client_callback_async(
         session_factory,
         settings,
         callback_payload=client_callback_data(ClientMenuAction.BOOK_HAIRCUT),
+        telegram_user_id=555,
+        now=now,
+    )
+    date_response = await dispatch_client_callback_async(
+        session_factory,
+        settings,
+        callback_payload=service_response.buttons[0].callback_data,
         telegram_user_id=555,
         now=now,
     )
@@ -465,7 +574,10 @@ async def test_admins_are_notified_after_client_self_booking() -> None:
 
     assert [message[0] for message in bot.messages] == [111]
     assert "Новая запись" in bot.messages[0][1]
-    assert "Стрижка" in bot.messages[0][1]
+    assert "Мужская стрижка" in bot.messages[0][1]
+    assert "Notify Client" in bot.messages[0][1]
+    assert "ID клиента:" in bot.messages[0][1]
+    assert "https://t.me/notify_client" in bot.messages[0][1]
     assert len(logs) == 1
     assert logs[0].kind == ADMIN_NEW_BOOKING_NOTIFICATION_KIND
     assert logs[0].recipient_telegram_id == 111
@@ -696,9 +808,10 @@ def test_stale_slot_callback_is_recoverable() -> None:
     )
     assert response.buttons[0].callback_data == client_callback_data(
         ClientMenuAction.SELECT_HAIRCUT_DATE,
-        available_slot.starts_at.astimezone(_settings().timezone_info)
-        .date()
-        .isoformat(),
+        (
+            f"{HAIRCUT_MALE_SERVICE}|"
+            f"{available_slot.starts_at.astimezone(_settings().timezone_info).date().isoformat()}"
+        ),
     )
 
 
@@ -746,7 +859,7 @@ def test_confirming_taken_slot_returns_fresh_dates_without_duplicate_booking() -
     )
     assert response.buttons[0].callback_data == client_callback_data(
         ClientMenuAction.SELECT_HAIRCUT_DATE,
-        next_slot_date,
+        f"{HAIRCUT_MALE_SERVICE}|{next_slot_date}",
     )
     assert len(bookings) == 1
     assert {user.telegram_id for user in users} == {111}

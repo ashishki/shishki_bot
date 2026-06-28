@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 from app.bot.handlers.admin import (
     AdminAccessDenied,
     handle_admin_cancel_booking,
+    handle_admin_close_day_command,
+    handle_admin_close_slot_command,
     handle_admin_manual_booking,
     handle_admin_manual_booking_command,
     handle_admin_reschedule_booking,
@@ -87,10 +89,11 @@ def test_admin_manual_booking() -> None:
 def test_admin_manual_booking_command_creates_booking_and_hides_overlap() -> None:
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
-    starts_at = (datetime.now(UTC) + timedelta(days=1)).replace(
+    starts_at = (datetime.now(_settings().timezone_info) + timedelta(days=1)).replace(
         minute=0,
         second=0,
         microsecond=0,
+        tzinfo=None,
     )
 
     with Session(engine, expire_on_commit=False) as session:
@@ -116,12 +119,104 @@ def test_admin_manual_booking_command_creates_booking_and_hides_overlap() -> Non
     assert booking is not None
     assert booking.service == "Окрашивание"
     assert booking.duration_minutes == 180
-    assert booking.ends_at == starts_at + timedelta(hours=3)
+    assert booking.ends_at == (starts_at + timedelta(hours=3)).replace(tzinfo=UTC)
     assert attempt.kind == "booking_confirmation"
     assert "Окрашивание" in attempt.text
     assert available_slots == [after_manual]
     assert overlap_one not in available_slots
     assert overlap_two not in available_slots
+
+
+def test_admin_manual_booking_command_accepts_username() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    starts_at = (datetime.now(_settings().timezone_info) + timedelta(days=1)).replace(
+        minute=0,
+        second=0,
+        microsecond=0,
+        tzinfo=None,
+    )
+
+    with Session(engine, expire_on_commit=False) as session:
+        _create_client(session)
+
+        attempt = handle_admin_manual_booking_command(
+            session,
+            _settings(),
+            telegram_user_id=111,
+            command_text=(
+                f"/book @test_client {starts_at:%Y-%m-%d} "
+                f"{starts_at:%H:%M} 60 100 Мужская стрижка"
+            ),
+        )
+        session.commit()
+
+        booking = session.scalar(select(Booking))
+
+    assert booking is not None
+    assert booking.service == "Мужская стрижка"
+    assert booking.price_amount == Decimal("100.00")
+    assert attempt.recipient_telegram_id == 123
+
+
+def test_admin_can_close_slot_and_rest_of_day() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    base = (datetime.now(_settings().timezone_info) + timedelta(days=2)).replace(
+        hour=10,
+        minute=0,
+        second=0,
+        microsecond=0,
+        tzinfo=None,
+    )
+
+    with Session(engine, expire_on_commit=False) as session:
+        client = _create_client(session)
+        first_slot = _create_slot(session, starts_at=base)
+        second_slot = _create_slot(session, starts_at=base + timedelta(hours=1))
+        occupied_slot = _create_slot(session, starts_at=base + timedelta(hours=2))
+        fourth_slot = _create_slot(session, starts_at=base + timedelta(hours=3))
+        handle_admin_manual_booking(
+            session,
+            _settings(),
+            telegram_user_id=111,
+            client_id=client.id,
+            slot_id=occupied_slot.id,
+            service="coloring",
+            duration_minutes=60,
+            price_amount=Decimal("220.00"),
+        )
+        session.commit()
+
+        close_one = handle_admin_close_slot_command(
+            session,
+            _settings(),
+            telegram_user_id=111,
+            command_text=f"/close {base:%Y-%m-%d} {base:%H:%M}",
+        )
+        close_day = handle_admin_close_day_command(
+            session,
+            _settings(),
+            telegram_user_id=111,
+            command_text=(
+                f"/close_day {base:%Y-%m-%d} {(base + timedelta(hours=1)):%H:%M}"
+            ),
+        )
+        session.commit()
+
+        available_slots = list_available_slots(session, now=datetime.now(UTC))
+
+    assert "Слот закрыт" in close_one.text
+    assert "Закрыл свободные слоты" in close_day.text
+    assert "Не тронул слоты с активными записями" in close_day.text
+    assert first_slot.is_blocked
+    assert second_slot.is_blocked
+    assert not occupied_slot.is_blocked
+    assert fourth_slot.is_blocked
+    assert first_slot not in available_slots
+    assert second_slot not in available_slots
+    assert occupied_slot not in available_slots
+    assert fourth_slot not in available_slots
 
 
 def test_admin_reschedule_notifies_client() -> None:

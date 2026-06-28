@@ -37,6 +37,7 @@ The code also provides tested service/admin wrapper behavior for:
 - Viewing client cards and visit history from completed bookings only.
 - Viewing referral progress on client cards.
 - Viewing referral bonuses and marking a cosmetics/styling bonus as awarded.
+- Closing one free slot or the rest of a day from Telegram admin commands.
 
 ## Manual Booking
 
@@ -46,22 +47,46 @@ self-booking.
 
 1. Ask the client to press `/start` in the bot at least once, or ask them to
    press `Окрашивание` / `Консультация`. This creates their client card.
-2. Open `/admin` -> `Клиенты` and copy the `ID клиента`.
+2. Open `/admin` -> `Клиенты` and copy either `ID клиента` or the Telegram
+   username from the card.
 3. Send an admin command:
 
 ```text
-/book <client_id> <YYYY-MM-DD> <HH:MM> <minutes> <price> <service>
+/book <client_id|@username> <YYYY-MM-DD> <HH:MM> <minutes> <price> <service>
 ```
 
 Example:
 
 ```text
-/book 3 2026-06-28 15:00 180 250 Окрашивание
+/book @client 2026-06-28 15:00 180 250 Окрашивание
 ```
 
 The command creates a confirmed booking, sends/logs a confirmation to the
 client when the client has Telegram identity, and blocks all overlapping
 client-visible slots for the duration of that booking.
+
+The username form works only for clients who already have a bot client card.
+Use numeric client ID when a Telegram username is missing or has changed.
+
+## Closing Slots
+
+Use this when you want to hide one free hour or close the rest of the day.
+The commands do not close slots that already have an active booking.
+
+```text
+/close <YYYY-MM-DD> <HH:MM>
+/close_day <YYYY-MM-DD> <HH:MM>
+```
+
+Examples:
+
+```text
+/close 2026-07-04 16:00
+/close_day 2026-07-04 16:00
+```
+
+Open `/admin` -> `Ближайшие даты` -> a date to see the command hint with the
+selected date.
 
 ## Referral Bonuses
 

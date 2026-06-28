@@ -18,8 +18,28 @@ from sqlalchemy.orm import Session
 from app.db.models import Booking, BookingStatus, BookingStatusHistory, Client, Slot
 
 HAIRCUT_SERVICE = "haircut"
+HAIRCUT_MALE_SERVICE = "haircut_male"
+HAIRCUT_FEMALE_SERVICE = "haircut_female"
+DEFAULT_HAIRCUT_SERVICE = HAIRCUT_MALE_SERVICE
+HAIRCUT_SERVICES = (
+    HAIRCUT_SERVICE,
+    HAIRCUT_MALE_SERVICE,
+    HAIRCUT_FEMALE_SERVICE,
+)
 DEFAULT_HAIRCUT_DURATION_MINUTES = 60
-DEFAULT_HAIRCUT_PRICE = Decimal("90.00")
+MALE_HAIRCUT_PRICE = Decimal("100.00")
+FEMALE_HAIRCUT_PRICE = Decimal("120.00")
+DEFAULT_HAIRCUT_PRICE = MALE_HAIRCUT_PRICE
+HAIRCUT_PRICE_BY_SERVICE = {
+    HAIRCUT_SERVICE: MALE_HAIRCUT_PRICE,
+    HAIRCUT_MALE_SERVICE: MALE_HAIRCUT_PRICE,
+    HAIRCUT_FEMALE_SERVICE: FEMALE_HAIRCUT_PRICE,
+}
+HAIRCUT_LABEL_BY_SERVICE = {
+    HAIRCUT_SERVICE: "Стрижка",
+    HAIRCUT_MALE_SERVICE: "Мужская стрижка",
+    HAIRCUT_FEMALE_SERVICE: "Женская стрижка",
+}
 ACTIVE_BOOKING_STATUSES = (
     BookingStatus.DRAFT,
     BookingStatus.CONFIRMED,
@@ -102,12 +122,13 @@ def create_haircut_booking(
     *,
     client_id: int,
     slot_id: int,
+    service: str = DEFAULT_HAIRCUT_SERVICE,
 ) -> Booking:
     return create_simple_booking(
         session,
         client_id=client_id,
         slot_id=slot_id,
-        service=HAIRCUT_SERVICE,
+        service=service,
     )
 
 
@@ -118,11 +139,12 @@ def create_simple_booking(
     slot_id: int,
     service: str,
 ) -> Booking:
-    normalized_service = service.strip().lower()
-    if normalized_service != HAIRCUT_SERVICE:
+    try:
+        normalized_service = normalize_haircut_service(service)
+    except BookingServiceError as exc:
         raise UnsupportedSelfBookServiceError(
             "Only simple haircut bookings can be self-booked"
-        )
+        ) from exc
 
     client = session.get(Client, client_id)
     if client is None:
@@ -139,12 +161,12 @@ def create_simple_booking(
             booking = Booking(
                 client=client,
                 slot=slot,
-                service=HAIRCUT_SERVICE,
+                service=normalized_service,
                 starts_at=starts_at,
                 ends_at=ends_at,
                 duration_minutes=DEFAULT_HAIRCUT_DURATION_MINUTES,
                 place=slot.place,
-                price_amount=DEFAULT_HAIRCUT_PRICE,
+                price_amount=haircut_price_for_service(normalized_service),
                 status=BookingStatus.CONFIRMED,
             )
             booking.status_history.append(
@@ -163,6 +185,29 @@ def create_simple_booking(
     if booking is None:
         raise SlotUnavailableError(f"Slot is already booked: {slot_id}")
     return booking
+
+
+def normalize_haircut_service(service: str) -> str:
+    normalized_service = service.strip().lower()
+    if normalized_service == HAIRCUT_SERVICE:
+        return DEFAULT_HAIRCUT_SERVICE
+    if normalized_service in (HAIRCUT_MALE_SERVICE, HAIRCUT_FEMALE_SERVICE):
+        return normalized_service
+    raise BookingServiceError(f"Unsupported haircut service: {service}")
+
+
+def is_haircut_service(service: str) -> bool:
+    return service.strip().lower() in HAIRCUT_SERVICES
+
+
+def haircut_price_for_service(service: str) -> Decimal:
+    normalized_service = normalize_haircut_service(service)
+    return HAIRCUT_PRICE_BY_SERVICE[normalized_service]
+
+
+def haircut_service_label(service: str) -> str:
+    normalized_service = service.strip().lower()
+    return HAIRCUT_LABEL_BY_SERVICE.get(normalized_service, service)
 
 
 def reschedule_booking(

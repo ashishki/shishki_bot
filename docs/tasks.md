@@ -158,7 +158,7 @@ Objective: |
 
 Acceptance-Criteria:
   - id: AC-1
-    description: "A confirmed haircut booking can be created for an available slot with default 90 GEL price and 1 hour duration."
+    description: "A confirmed default male haircut booking can be created for an available slot with 100 GEL price and 1 hour duration."
     test: "tests/test_booking_service.py::test_create_haircut_booking"
   - id: AC-2
     description: "Two bookings cannot reserve the same slot."
@@ -695,3 +695,58 @@ Files:
 Context-Refs:
   - docs/spec.md#feature-2---simple-haircut-booking
   - docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity
+
+## T20: Haircut Variants And Admin Slot Closures
+
+Owner:      codex
+Phase:      5
+Type:       data
+Depends-On: T19
+Status:     [x] complete
+Completed:  2026-06-28
+
+Objective: |
+  Split self-booked haircut into male and female service variants with
+  different prices, make admin booking/contact surfaces show who booked,
+  allow manual booking by client ID or Telegram username, add admin controls
+  for closing one slot or the rest of a day, and update the live July schedule.
+
+Acceptance-Criteria:
+  - id: AC-1
+    description: "Client haircut booking preserves male/female selection through date, slot, and confirmation and stores the correct price."
+    test: "tests/test_client_handlers.py::test_client_callback_books_female_haircut_with_female_price"
+  - id: AC-2
+    description: "Admin booking event messages include client identity and chat links when Telegram identity is available."
+    test: "tests/test_notifications.py::test_admin_new_booking_message_contains_required_fields"
+  - id: AC-3
+    description: "Admin can create a manual booking by Telegram username as well as numeric client ID."
+    test: "tests/test_admin_booking.py::test_admin_manual_booking_command_accepts_username"
+  - id: AC-4
+    description: "Admin can close one free slot or the rest of a day without blocking occupied active bookings."
+    test: "tests/test_admin_booking.py::test_admin_can_close_slot_and_rest_of_day"
+  - id: AC-5
+    description: "Live local database is backed up, 2026-07-04 slots from 16:00 onward are closed if free, and 2026-07-08 / 2026-07-10 hourly slots are loaded."
+    test: "manual SQLAlchemy verification recorded in implementation journal"
+
+Files:
+  - app/services/booking.py
+  - app/bot/handlers/client.py
+  - app/bot/handlers/admin.py
+  - app/bot/messages.py
+  - app/bot/keyboards.py
+  - tests/test_booking_service.py
+  - tests/test_client_handlers.py
+  - tests/test_admin_booking.py
+  - tests/test_notifications.py
+  - docs/ADMIN_GUIDE.md
+  - docs/spec.md
+  - docs/CODEX_PROMPT.md
+  - docs/tasks.md
+  - docs/IMPLEMENTATION_JOURNAL.md
+  - docs/EVIDENCE_INDEX.md
+
+Context-Refs:
+  - docs/spec.md#feature-2---simple-haircut-booking
+  - docs/spec.md#feature-3---complex-service-redirect-and-manual-booking
+  - docs/spec.md#feature-4---admin-booking-management
+  - docs/IMPLEMENTATION_CONTRACT.md#booking-integrity
