@@ -1,7 +1,7 @@
 # Evidence Index - shishki_bot
 
 Version: 1.0
-Last updated: 2026-06-23
+Last updated: 2026-06-30
 
 This index points to durable proof. It is not proof by itself.
 
@@ -43,6 +43,7 @@ This index points to durable proof. It is not proof by itself.
 | T19 admin booking event notifications | tests/runtime | `app/bot/handlers/client.py`, `tests/test_client_handlers.py`, `app/bot/messages.py` | Client self-booking, reschedule, and cancellation confirmations return a booking ID and event type for post-commit admin notification; runtime sends event-specific admin text to configured admins and records delivery logs without altering the client response. Commands run: ruff check, ruff format --check, pytest tests -q, integrity check, skill security gate; systemd service active. | 2026-06-25 | Yes |
 | T20 haircut variants and admin slot closures | tests/runtime/data | `app/services/booking.py`, `app/bot/handlers/client.py`, `app/bot/handlers/admin.py`, `app/bot/messages.py`, `tests/test_booking_service.py`, `tests/test_client_handlers.py`, `tests/test_admin_booking.py`, `tests/test_notifications.py`, `/srv/openclaw-you/backups/shishki_bot/shishki_bot_before_t20_slots_20260628_161425.db` | Client self-booking preserves male/female haircut choice and 100/120 GEL pricing; admin booking notifications include client identity/chat; manual booking accepts client ID or username; admin can close one slot or the remaining free slots in a day without touching occupied active bookings; live July slots were updated after backup. Commands run: ruff check, ruff format --check, pytest tests -q, integrity check, skill security gate; systemd service active. | 2026-06-28 | Yes |
 | T21 admin dashboard and price-free reminders | tests/runtime | `app/bot/handlers/admin.py`, `app/bot/keyboards.py`, `app/bot/messages.py`, `tests/test_admin_auth.py`, `tests/test_admin_booking.py`, `tests/test_notifications.py` | Admin command opens a live dashboard with upcoming bookings, client counts, free slots, weekly revenue, pending bonuses, and quick controls; metrics screen shows weekly revenue/net and top clients by completed visits/spend; reminder templates do not include price. Commands run: ruff check, ruff format --check, pytest tests -q, integrity check, skill security gate; systemd service active. | 2026-06-28 | Yes |
+| T22 admin working time reopen and referral start CTA | tests/runtime/data | `app/bot/handlers/admin.py`, `app/bot/handlers/client.py`, `app/bot/keyboards.py`, `tests/test_admin_auth.py`, `tests/test_admin_booking.py`, `tests/test_client_handlers.py`, `/srv/openclaw-you/backups/shishki_bot/shishki_bot_before_t22_schedule_20260630_170754.db` | Admin can create missing hourly slots and reopen blocked working time; the admin menu labels this as working time; client start menu includes referral bonus copy and a recommendations button; live 2026-07-10 client-visible slots are empty and live 2026-07-12 client-visible slots are 10:00 through 19:00 after backup. Commands run: ruff check, ruff format --check, pytest tests -q, integrity check, skill security gate; systemd service active. | 2026-06-30 | Yes |
 
 ## Retrieval Rules
 

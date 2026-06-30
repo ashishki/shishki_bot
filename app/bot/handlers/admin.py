@@ -88,19 +88,22 @@ MANUAL_BOOKING_HELP_TEXT = "\n".join(
         "ID и username видны в «Клиенты» -> карточка клиента.",
     ]
 )
-SLOT_CLOSING_HELP_TEXT = "\n".join(
+SLOT_SCHEDULE_HELP_TEXT = "\n".join(
     [
-        "Закрыть время:",
+        "Рабочее время:",
+        "/open <YYYY-MM-DD> <HH:MM>",
+        "/open_day <YYYY-MM-DD> <HH:MM> <HH:MM>",
         "/close <YYYY-MM-DD> <HH:MM>",
-        "",
-        "Закрыть остаток дня с указанного времени:",
         "/close_day <YYYY-MM-DD> <HH:MM>",
         "",
         "Примеры:",
+        "/open 2026-07-12 10:00",
+        "/open_day 2026-07-12 10:00 20:00",
         "/close 2026-07-04 16:00",
         "/close_day 2026-07-04 16:00",
     ]
 )
+SLOT_CLOSING_HELP_TEXT = SLOT_SCHEDULE_HELP_TEXT
 
 
 class AdminAccessDenied(PermissionError):
@@ -522,6 +525,103 @@ def handle_admin_close_day_command(
     )
 
 
+def handle_admin_open_slot_command(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    command_text: str | None,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    starts_at = _parse_slot_opening_command(command_text, settings, "/open")
+    slot, status = _open_slot(
+        session,
+        settings,
+        starts_at=starts_at,
+        note="opened by admin command",
+    )
+    session.flush()
+
+    if status == "created":
+        text = "Слот создан и открыт: "
+    elif status == "reopened":
+        text = "Слот открыт: "
+    else:
+        text = "Слот уже открыт: "
+
+    return AdminRuntimeResponse(
+        text=text + _format_datetime(_slot_local_start(slot, settings)),
+        buttons=(
+            _schedule_date_button(_slot_local_date(slot, settings)),
+            _admin_menu_button(),
+        ),
+    )
+
+
+def handle_admin_open_day_command(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    command_text: str | None,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    starts_at, ends_at = _parse_slot_opening_day_command(
+        command_text,
+        settings,
+        "/open_day",
+    )
+    selected_date = starts_at.date()
+
+    created_count = 0
+    reopened_count = 0
+    already_open_count = 0
+    active_bookings: list[Booking] = []
+    current_start = starts_at
+    while current_start < ends_at:
+        slot, status = _open_slot(
+            session,
+            settings,
+            starts_at=current_start,
+            note="opened by admin day command",
+        )
+        if status == "created":
+            created_count += 1
+        elif status == "reopened":
+            reopened_count += 1
+        else:
+            already_open_count += 1
+
+        booking = _active_booking_for_slot(session, slot)
+        if booking is not None and booking not in active_bookings:
+            active_bookings.append(booking)
+        current_start += timedelta(hours=1)
+    session.flush()
+
+    lines = [
+        (
+            "Рабочий день открыт: "
+            f"{_format_date_label(selected_date)} "
+            f"{starts_at:%H:%M}-{ends_at:%H:%M}"
+        ),
+        f"Создано слотов: {created_count}.",
+        f"Открыто закрытых: {reopened_count}.",
+    ]
+    if already_open_count:
+        lines.append(f"Уже были открыты: {already_open_count}.")
+    if active_bookings:
+        lines.append("На часть времени уже есть активные записи:")
+        lines.extend(_booking_line(booking, settings) for booking in active_bookings)
+
+    return AdminRuntimeResponse(
+        text="\n".join(lines),
+        buttons=(
+            _schedule_date_button(selected_date),
+            _admin_menu_button(),
+        ),
+    )
+
+
 def handle_admin_reschedule_booking(
     session: Session,
     settings: Settings,
@@ -922,6 +1022,8 @@ def handle_admin_schedule_date_view(
         f"Открытых слотов: {sum(1 for slot in slots if not slot.is_blocked)}",
         f"Записей: {len(bookings)}",
         "",
+        f"Открыть час: /open {selected_date.isoformat()} HH:MM",
+        f"Открыть день: /open_day {selected_date.isoformat()} 10:00 20:00",
         f"Закрыть час: /close {selected_date.isoformat()} HH:MM",
         f"Закрыть остаток дня: /close_day {selected_date.isoformat()} HH:MM",
     ]
@@ -1259,7 +1361,7 @@ def build_admin_router(
 
     @router.message(Command("close"))
     async def close_slot(message: Message) -> None:
-        await _handle_slot_closing_message(
+        await _handle_slot_schedule_message(
             message,
             lambda session: handle_admin_close_slot_command(
                 session,
@@ -1271,9 +1373,33 @@ def build_admin_router(
 
     @router.message(Command("close_day"))
     async def close_day(message: Message) -> None:
-        await _handle_slot_closing_message(
+        await _handle_slot_schedule_message(
             message,
             lambda session: handle_admin_close_day_command(
+                session,
+                settings,
+                telegram_user_id=message.from_user.id if message.from_user else None,
+                command_text=message.text,
+            ),
+        )
+
+    @router.message(Command("open"))
+    async def open_slot(message: Message) -> None:
+        await _handle_slot_schedule_message(
+            message,
+            lambda session: handle_admin_open_slot_command(
+                session,
+                settings,
+                telegram_user_id=message.from_user.id if message.from_user else None,
+                command_text=message.text,
+            ),
+        )
+
+    @router.message(Command("open_day"))
+    async def open_day(message: Message) -> None:
+        await _handle_slot_schedule_message(
+            message,
+            lambda session: handle_admin_open_day_command(
                 session,
                 settings,
                 telegram_user_id=message.from_user.id if message.from_user else None,
@@ -1305,12 +1431,12 @@ def build_admin_router(
                 parse_mode="HTML",
             )
 
-    async def _handle_slot_closing_message(
+    async def _handle_slot_schedule_message(
         message: Message,
         handler: Callable[[Session], AdminRuntimeResponse],
     ) -> None:
         if async_session_factory is None:
-            await message.answer(SLOT_CLOSING_HELP_TEXT)
+            await message.answer(SLOT_SCHEDULE_HELP_TEXT)
             return
 
         async with async_session_factory() as async_session:
@@ -1323,7 +1449,7 @@ def build_admin_router(
             except ValueError as exc:
                 await async_session.rollback()
                 await message.answer(
-                    f"{_html(exc)}\n\n{SLOT_CLOSING_HELP_TEXT}",
+                    f"{_html(exc)}\n\n{SLOT_SCHEDULE_HELP_TEXT}",
                     parse_mode="HTML",
                 )
                 return
@@ -1459,7 +1585,7 @@ def build_admin_router(
         if action is AdminMenuAction.CLOSE_SLOTS:
             require_admin_user(telegram_user_id, settings)
             return AdminRuntimeResponse(
-                text=SLOT_CLOSING_HELP_TEXT,
+                text=SLOT_SCHEDULE_HELP_TEXT,
                 buttons=(_admin_menu_button(),),
             )
         if (
@@ -1747,6 +1873,56 @@ def _parse_slot_closing_command(
     return starts_at
 
 
+def _parse_slot_opening_command(
+    command_text: str | None,
+    settings: Settings,
+    command_name: str,
+) -> datetime:
+    parts = (command_text or "").strip().split(maxsplit=2)
+    if len(parts) != 3 or not _command_matches(parts[0], command_name):
+        raise ValueError("Неверный формат команды.")
+
+    starts_at = _parse_local_datetime(parts[1], parts[2])
+    now_local = datetime.now(settings.timezone_info).replace(tzinfo=None)
+    if starts_at <= now_local:
+        raise ValueError("Нельзя открыть слот в прошлом.")
+    return starts_at
+
+
+def _parse_slot_opening_day_command(
+    command_text: str | None,
+    settings: Settings,
+    command_name: str,
+) -> tuple[datetime, datetime]:
+    parts = (command_text or "").strip().split(maxsplit=3)
+    if len(parts) != 4 or not _command_matches(parts[0], command_name):
+        raise ValueError("Неверный формат команды.")
+
+    starts_at = _parse_local_datetime(parts[1], parts[2])
+    ends_at = _parse_local_datetime(parts[1], parts[3])
+    now_local = datetime.now(settings.timezone_info).replace(tzinfo=None)
+    if starts_at <= now_local:
+        raise ValueError("Нельзя открыть рабочий день в прошлом.")
+    if ends_at <= starts_at:
+        raise ValueError("Время окончания должно быть позже начала.")
+    return starts_at, ends_at
+
+
+def _parse_local_datetime(raw_date: str, raw_time: str) -> datetime:
+    try:
+        selected_date = date.fromisoformat(raw_date)
+        hour, minute = (int(value) for value in raw_time.split(":", maxsplit=1))
+        return datetime(
+            selected_date.year,
+            selected_date.month,
+            selected_date.day,
+            hour,
+            minute,
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Не удалось разобрать дату или время.") from exc
+
+
 def _find_slot_by_local_start(
     session: Session,
     settings: Settings,
@@ -1777,6 +1953,34 @@ def _active_booking_for_slot(session: Session, slot: Slot) -> Booking | None:
 def _block_slot(slot: Slot, *, note: str) -> None:
     slot.is_blocked = True
     slot.note = note
+
+
+def _open_slot(
+    session: Session,
+    settings: Settings,
+    *,
+    starts_at: datetime,
+    note: str,
+) -> tuple[Slot, str]:
+    slot = _find_slot_by_local_start(session, settings, starts_at=starts_at)
+    if slot is None:
+        slot = Slot(
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(hours=1),
+            place=settings.default_place,
+            is_blocked=False,
+            note=note,
+        )
+        session.add(slot)
+        session.flush()
+        return slot, "created"
+
+    if slot.is_blocked:
+        slot.is_blocked = False
+        slot.note = note
+        return slot, "reopened"
+
+    return slot, "already_open"
 
 
 def _command_matches(raw_command: str, expected_command: str) -> bool:
@@ -1866,7 +2070,7 @@ def _admin_dashboard_buttons() -> tuple[AdminRuntimeButton, ...]:
             callback_data=admin_callback_data(AdminMenuAction.MANUAL_BOOKING),
         ),
         AdminRuntimeButton(
-            label="Закрыть время",
+            label="Рабочее время",
             callback_data=admin_callback_data(AdminMenuAction.CLOSE_SLOTS),
         ),
         AdminRuntimeButton(

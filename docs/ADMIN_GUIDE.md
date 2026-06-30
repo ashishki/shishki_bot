@@ -1,7 +1,7 @@
 # Admin Guide
 
 Version: 1.0
-Last updated: 2026-06-23
+Last updated: 2026-06-30
 
 This guide is for the stylist/admin operating `shishki_bot`.
 
@@ -20,7 +20,7 @@ The admin menu exposes:
 - Клиенты
 - Метрики
 - Создать запись
-- Закрыть время
+- Рабочее время
 - Сегодня
 - Бонусы
 
@@ -39,7 +39,7 @@ The code also provides tested service/admin wrapper behavior for:
   bookings only.
 - Viewing referral progress on client cards.
 - Viewing referral bonuses and marking a cosmetics/styling bonus as awarded.
-- Closing one free slot or the rest of a day from Telegram admin commands.
+- Creating, reopening, or closing working time from Telegram admin commands.
 
 ## Manual Booking
 
@@ -70,12 +70,22 @@ client-visible slots for the duration of that booking.
 The username form works only for clients who already have a bot client card.
 Use numeric client ID when a Telegram username is missing or has changed.
 
-## Closing Slots
+## Working Time
 
-Use this when you want to hide one free hour or close the rest of the day.
-The commands do not close slots that already have an active booking.
+Use this when you want to create a working day, reopen a closed hour, hide one
+free hour, or close the rest of the day.
+
+Opening a day creates missing one-hour slots from the start time up to, but not
+including, the end time. For example, 10:00-20:00 creates client-visible starts
+10:00 through 19:00.
+
+Closing commands do not close slots that already have an active booking.
+Opening a slot with an active overlapping booking is allowed, but the client
+self-booking list still hides that time because it is occupied.
 
 ```text
+/open <YYYY-MM-DD> <HH:MM>
+/open_day <YYYY-MM-DD> <HH:MM> <HH:MM>
 /close <YYYY-MM-DD> <HH:MM>
 /close_day <YYYY-MM-DD> <HH:MM>
 ```
@@ -83,6 +93,8 @@ The commands do not close slots that already have an active booking.
 Examples:
 
 ```text
+/open 2026-07-12 10:00
+/open_day 2026-07-12 10:00 20:00
 /close 2026-07-04 16:00
 /close_day 2026-07-04 16:00
 ```

@@ -2,7 +2,7 @@
 
 Status: active
 Mode: Standard
-Last updated: 2026-06-23
+Last updated: 2026-06-30
 
 This task graph is the forward contract for Codex. Keep tasks small enough for
 one focused implementation session and update this file when scope changes.
@@ -793,5 +793,49 @@ Files:
 Context-Refs:
   - docs/spec.md#feature-4---admin-booking-management
   - docs/spec.md#feature-5---reminders-and-notifications
+
+## T22: Admin Working Time Reopen And Referral Start CTA
+
+Owner:      codex
+Phase:      5
+Type:       none
+Depends-On: T21
+Status:     [x] complete
+Completed:  2026-06-30
+
+Objective: |
+  Let admin create/reopen working hours and days from Telegram, restore the
+  referral bonus entry point to the client start menu, and move the live local
+  July schedule from 2026-07-10 to 2026-07-12.
+
+Acceptance-Criteria:
+  - id: AC-1
+    description: "Admin can create missing hourly slots and reopen blocked slots for a working day."
+    test: "tests/test_admin_booking.py::test_admin_can_create_and_reopen_working_time"
+  - id: AC-2
+    description: "Client start menu includes referral bonus copy and a recommendations button."
+    test: "tests/test_client_handlers.py::test_start_menu"
+  - id: AC-3
+    description: "Live local database is backed up, 2026-07-10 remains hidden from clients, and 2026-07-12 hourly slots are open from 10:00 through 19:00."
+    test: "manual SQLAlchemy verification recorded in implementation journal"
+
+Files:
+  - app/bot/handlers/admin.py
+  - app/bot/handlers/client.py
+  - app/bot/keyboards.py
+  - tests/test_admin_auth.py
+  - tests/test_admin_booking.py
+  - tests/test_client_handlers.py
+  - docs/ADMIN_GUIDE.md
+  - docs/spec.md
+  - docs/CODEX_PROMPT.md
+  - docs/tasks.md
+  - docs/IMPLEMENTATION_JOURNAL.md
+  - docs/EVIDENCE_INDEX.md
+
+Context-Refs:
+  - docs/spec.md#feature-1---client-main-menu
+  - docs/spec.md#feature-4---admin-booking-management
+  - docs/IMPLEMENTATION_CONTRACT.md#booking-integrity
   - docs/IMPLEMENTATION_CONTRACT.md#admin-authorization
   - docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity

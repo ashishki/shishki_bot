@@ -1,7 +1,7 @@
 # Product Spec - shishki_bot
 
 Version: 1.0
-Last updated: 2026-06-23
+Last updated: 2026-06-30
 Status: Phase 1 bootstrap
 
 ## Overview
@@ -20,16 +20,15 @@ change notifications, and lightweight business statistics.
 ## Feature 1 - Client Main Menu
 
 Description: The client receives a clear Telegram menu with primary service
-choices, active booking access, and stylist information. Secondary actions such
-as referrals appear after booking or inside the active booking flow.
+choices, active booking access, referral bonus access, and stylist information.
 
 Acceptance criteria:
 
 1. Client can open `/start` and see concise welcome text plus buttons.
 2. Welcome text is short, avoids service price/duration detail, and points the
    client to service choice buttons.
-3. Menu includes haircut, coloring, consultation, my booking, and about master
-   options.
+3. Menu includes haircut, coloring, consultation, my booking, referral, and
+   about master options.
 4. About master, no-active-booking, and service redirect screens keep useful
    service/main-menu navigation available.
 5. Unknown input returns the main menu without creating a booking.
@@ -89,9 +88,10 @@ Acceptance criteria:
 3. Admin can reschedule, cancel, change service, change duration, change price, change place, and update notes.
 4. Booking changes create status/change history records.
 5. Relevant changes send client notifications or log delivery failure.
-6. Admin can close one free slot or the remaining free slots in a day without
+6. Admin can create/reopen a single hour or working day from Telegram.
+7. Admin can close one free slot or the remaining free slots in a day without
    changing occupied active bookings.
-7. Admin can open client list/cards and see per-client visit, spend, current
+8. Admin can open client list/cards and see per-client visit, spend, current
    booking, history, and referral metrics.
 
 Out of scope for v1: web admin panel and multi-admin permissions beyond a simple allowlist.

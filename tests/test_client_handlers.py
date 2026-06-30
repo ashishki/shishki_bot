@@ -59,6 +59,7 @@ def test_start_menu() -> None:
     assert response.text == CLIENT_WELCOME_TEXT
     assert "Привет" in response.text
     assert "Здесь можно записаться" in response.text
+    assert "бонус за 3 новых клиентов" in response.text
     assert "Артём" not in response.text
     assert "SHISHKI" not in response.text
     assert "60 мин" not in response.text
@@ -70,6 +71,7 @@ def test_start_menu() -> None:
         ClientMenuAction.COMPLEX_SERVICE,
         ClientMenuAction.CONSULTATION,
         ClientMenuAction.MY_BOOKING,
+        ClientMenuAction.REFERRAL_PROGRAM,
         ClientMenuAction.ABOUT_MASTER,
     )
     assert tuple(button.label for button in response.buttons) == (
@@ -77,6 +79,7 @@ def test_start_menu() -> None:
         "Окрашивание",
         "Консультация",
         "Моя запись",
+        "Рекомендации",
         "О мастере",
     )
     assert handle_unknown_input(_settings()) == response

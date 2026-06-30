@@ -16,6 +16,8 @@ from app.bot.handlers.admin import (
     handle_admin_manual_booking,
     handle_admin_manual_booking_command,
     handle_admin_metrics_dashboard,
+    handle_admin_open_day_command,
+    handle_admin_open_slot_command,
     handle_admin_reschedule_booking,
     handle_admin_update_booking_details,
 )
@@ -221,6 +223,56 @@ def test_admin_can_close_slot_and_rest_of_day() -> None:
     assert fourth_slot not in available_slots
 
 
+def test_admin_can_create_and_reopen_working_time() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    base = (datetime.now(_settings().timezone_info) + timedelta(days=2)).replace(
+        hour=10,
+        minute=0,
+        second=0,
+        microsecond=0,
+        tzinfo=None,
+    )
+
+    with Session(engine, expire_on_commit=False) as session:
+        closed_slot = _create_slot(session, starts_at=base)
+        closed_slot.is_blocked = True
+        already_open_slot = _create_slot(
+            session,
+            starts_at=base + timedelta(hours=1),
+        )
+        single_response = handle_admin_open_slot_command(
+            session,
+            _settings(),
+            telegram_user_id=111,
+            command_text=f"/open {base:%Y-%m-%d} {base:%H:%M}",
+        )
+        day_response = handle_admin_open_day_command(
+            session,
+            _settings(),
+            telegram_user_id=111,
+            command_text=f"/open_day {base:%Y-%m-%d} 10:00 14:00",
+        )
+        session.commit()
+
+        slots = list(
+            session.scalars(
+                select(Slot).where(Slot.starts_at >= base).order_by(Slot.starts_at)
+            )
+        )
+        available_slots = list_available_slots(session, now=datetime.now(UTC))
+
+    assert "Слот открыт" in single_response.text
+    assert "Рабочий день открыт" in day_response.text
+    assert "Создано слотов: 2." in day_response.text
+    assert "Уже были открыты: 2." in day_response.text
+    assert len(slots) == 4
+    assert slots[0] is closed_slot
+    assert slots[1] is already_open_slot
+    assert all(not slot.is_blocked for slot in slots)
+    assert slots == available_slots
+
+
 def test_admin_dashboard_and_metrics_show_bookings_clients_and_people_metrics() -> None:
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
@@ -283,7 +335,7 @@ def test_admin_dashboard_and_metrics_show_bookings_clients_and_people_metrics() 
         "Клиенты",
         "Метрики",
         "Создать запись",
-        "Закрыть время",
+        "Рабочее время",
         "Сегодня",
         "Бонусы",
     )
