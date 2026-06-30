@@ -1,17 +1,17 @@
 # CODEX_PROMPT.md
 
 Version: 1.1
-Date: 2026-06-23
+Date: 2026-06-30
 Mode: Standard
 Phase: 5
 
 ## Current State
 
 - Phase: 5
-- Baseline: T21 complete; task graph complete with 86 total tests.
+- Baseline: T22 complete; task graph complete with 87 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-28 - ruff check, ruff format --check, pytest `tests -q` (86 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-30 - ruff check, ruff format --check, pytest `tests -q` (87 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,7 +29,7 @@ Phase: 5
 
 ## Next Task
 
-none - implementation task graph complete through T21.
+none - implementation task graph complete through T22.
 
 For future changes, read:
 
@@ -178,6 +178,10 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   `/admin` into a live dashboard with upcoming bookings, client counts, free
   slots, weekly metrics, pending bonuses, people metrics, and quick controls;
   reminder messages are covered by tests to avoid showing price.
+- 2026-06-30 - T22 Admin Working Time Reopen And Referral Start CTA: added
+  admin commands for opening one hour or a whole working day, restored the
+  referral bonus CTA to the first client screen, and moved the live local July
+  schedule from 2026-07-10 to 2026-07-12 after backup.
 
 ## Completed Bootstrap Work
 
@@ -206,30 +210,30 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   haircut is 120 GEL. `Окрашивание` and `Консультация` route to stylist chat.
   One Telegram client cannot hold more than 2 active haircut bookings on the
   same date through self-booking.
-- Primary client menu is intentionally limited to `Стрижка`, `Окрашивание`,
-  `Консультация`, `Моя запись`, and `О мастере`; the first greeting does not
-  show haircut price/duration, referral access is shown after booking and inside
-  the active booking flow, and secondary screens keep service/main-menu
-  navigation available.
+- Primary client menu shows `Стрижка`, `Окрашивание`, `Консультация`,
+  `Моя запись`, `Рекомендации`, and `О мастере`; the first greeting does not
+  show haircut price/duration and briefly mentions the referral bonus.
 - Admin manual bookings can be created with `/book <client_id|@username>
   <YYYY-MM-DD> <HH:MM> <minutes> <price> <service>`. The client must have a
   client card first, usually by pressing `/start`, `Окрашивание`, or
   `Консультация`. Admin schedule and notification views show the client name,
   ID, and chat link when available.
-- Admin can hide free time with `/close <YYYY-MM-DD> <HH:MM>` or close the
-  remaining free slots in a day with `/close_day <YYYY-MM-DD> <HH:MM>`.
+- Admin can create/reopen free time with `/open <YYYY-MM-DD> <HH:MM>` or
+  `/open_day <YYYY-MM-DD> <HH:MM> <HH:MM>`, hide one free slot with
+  `/close <YYYY-MM-DD> <HH:MM>`, or close the remaining free slots in a day
+  with `/close_day <YYYY-MM-DD> <HH:MM>`.
 - `/admin` opens the admin dashboard: upcoming bookings with client links,
   client counts, free slots, weekly revenue, pending bonuses, and quick controls
-  for records, clients, metrics, manual booking, slot closing, today, and
+  for records, clients, metrics, manual booking, working time, today, and
   bonuses. The metrics screen shows weekly revenue/net and top clients by
   completed visits/spend.
 - Live local database was backed up to
   `<private-backup-path>`
   before clearing test booking/slot records. Active official slots are
   2026-06-28 13:00-19:00, 2026-07-04 10:00-15:00 with active bookings at
-  14:00 and 15:00 and closed slots from 16:00, plus 2026-07-08 and
-  2026-07-10 10:00-19:00 at the configured address.
-- Latest live database backup before T20 schedule edits:
+  14:00 and 15:00 and closed slots from 16:00, 2026-07-08 10:00-19:00,
+  and 2026-07-12 10:00-19:00 at the configured address. 2026-07-10 is closed.
+- Latest live database backup before T22 schedule edits:
   `<private-backup-path>`.
 
 ## Instructions For Codex

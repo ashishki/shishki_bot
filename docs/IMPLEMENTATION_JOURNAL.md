@@ -1,7 +1,7 @@
 # Implementation Journal - shishki_bot
 
 Version: 1.0
-Last updated: 2026-06-23
+Last updated: 2026-06-30
 Status: append-only
 
 ## Entry Template
@@ -347,3 +347,14 @@ Status: append-only
 - Evidence collected: targeted admin/auth/notification/reminder tests; ruff check; ruff format --check; full pytest passed with 86 tests; integrity check; skill security gate.
 - Follow-ups: Smoke-test `/admin`, `Метрики`, `Клиенты`, and `Записи` in Telegram after restart.
 - Notes: No schema migration. Move/cancel remains available from booking detail rather than as standalone main-menu actions.
+
+### 2026-06-30 - T22 - Admin Working Time Reopen And Referral Start CTA
+
+- Scope: `app/bot/handlers/admin.py`, `app/bot/handlers/client.py`, `app/bot/keyboards.py`, admin/client tests, operator/product docs, and live local SQLite schedule data.
+- Why: Admin needs to create or reopen working days after schedule changes, and new clients should see the referral bonus entry point immediately on start.
+- Decisions applied: `D-002`, `D-003`, `D-004`
+- Evidence collected: targeted admin/client menu tests; ruff check; ruff format --check; full pytest passed with 87 tests; integrity check; skill security gate.
+- Data operation: stopped `shishki-bot.service`, backed up `shishki_bot.db` to `<private-backup-path>`, confirmed 2026-07-10 had 10 already-closed slots and no active bookings, then created 10 hourly 2026-07-12 slots for starts 10:00 through 19:00.
+- Live schedule check: client-visible slots for 2026-07-10 are empty; client-visible slots for 2026-07-12 are 10:00 through 19:00.
+- Follow-ups: Smoke-test `/open_day`, `/open`, `/close_day`, and `/start` in Telegram after restart.
+- Notes: No schema migration. Opening a slot with an active overlapping booking does not make it client-bookable because the existing availability query hides active booking overlaps.

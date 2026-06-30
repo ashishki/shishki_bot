@@ -70,7 +70,7 @@ _ADMIN_MENU_LAYOUT: tuple[tuple[AdminMenuAction, str], ...] = (
     (AdminMenuAction.CLIENTS, "Клиенты"),
     (AdminMenuAction.REVENUE, "Метрики"),
     (AdminMenuAction.MANUAL_BOOKING, "Создать запись"),
-    (AdminMenuAction.CLOSE_SLOTS, "Закрыть время"),
+    (AdminMenuAction.CLOSE_SLOTS, "Рабочее время"),
     (AdminMenuAction.TODAY, "Сегодня"),
     (AdminMenuAction.REFERRAL_BONUSES, "Бонусы"),
 )
@@ -80,6 +80,7 @@ _CLIENT_MENU_LAYOUT: tuple[tuple[ClientMenuAction, str], ...] = (
     (ClientMenuAction.COMPLEX_SERVICE, "Окрашивание"),
     (ClientMenuAction.CONSULTATION, "Консультация"),
     (ClientMenuAction.MY_BOOKING, "Моя запись"),
+    (ClientMenuAction.REFERRAL_PROGRAM, "Рекомендации"),
     (ClientMenuAction.ABOUT_MASTER, "О мастере"),
 )
 
