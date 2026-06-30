@@ -874,3 +874,45 @@ Files:
 Context-Refs:
   - docs/spec.md#feature-4---admin-booking-management
   - docs/IMPLEMENTATION_CONTRACT.md#admin-authorization
+
+## T24: Button-Driven Working Time Admin UX
+
+Owner:      codex
+Phase:      5
+Type:       none
+Depends-On: T23
+Status:     [x] complete
+Completed:  2026-06-30
+
+Objective: |
+  Replace command-only working-time operation with a button-first admin flow
+  that provides date choices, presets, per-hour actions, and confirmation
+  before schedule mutations.
+
+Acceptance-Criteria:
+  - id: AC-1
+    description: "Admin can open a working day through date/preset/confirmation buttons."
+    test: "tests/test_admin_booking.py::test_admin_working_time_button_flow_opens_day_and_closes_hour"
+  - id: AC-2
+    description: "Admin can close a specific free hour through date/hour/confirmation buttons."
+    test: "tests/test_admin_booking.py::test_admin_working_time_button_flow_opens_day_and_closes_hour"
+  - id: AC-3
+    description: "Working-time command formats remain available as fast shortcuts."
+    test: "tests/test_admin_booking.py::test_admin_can_create_and_reopen_working_time"
+
+Files:
+  - app/bot/keyboards.py
+  - app/bot/handlers/admin.py
+  - tests/test_admin_booking.py
+  - README.md
+  - docs/ADMIN_GUIDE.md
+  - docs/spec.md
+  - docs/CODEX_PROMPT.md
+  - docs/tasks.md
+  - docs/IMPLEMENTATION_JOURNAL.md
+  - docs/EVIDENCE_INDEX.md
+
+Context-Refs:
+  - docs/spec.md#feature-4---admin-booking-management
+  - docs/IMPLEMENTATION_CONTRACT.md#admin-authorization
+  - docs/IMPLEMENTATION_CONTRACT.md#booking-integrity

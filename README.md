@@ -5,8 +5,8 @@ bot for one stylist.
 
 ## Current Status
 
-- Phase 5 is complete. T23 is complete: admin dashboard button callbacks are
-  regression-tested through the same runtime dispatch path used by Telegram.
+- Phase 5 is complete. T24 is complete: `Рабочее время` is a button-driven
+  admin flow with date selection, presets, per-hour actions, and confirmation.
 - Next task: none in the current task graph.
 - Cycle 9 T13 deployment/operator review findings were closed.
 - Production v1 remains deterministic: no production LLM behavior or external

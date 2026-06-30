@@ -8,10 +8,10 @@ Phase: 5
 ## Current State
 
 - Phase: 5
-- Baseline: T23 complete; task graph complete with 88 total tests.
+- Baseline: T24 complete; task graph complete with 89 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-30 - ruff check, ruff format --check, pytest `tests -q` (88 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-30 - ruff check, ruff format --check, pytest `tests -q` (89 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,7 +29,7 @@ Phase: 5
 
 ## Next Task
 
-none - implementation task graph complete through T23.
+none - implementation task graph complete through T24.
 
 For future changes, read:
 
@@ -185,6 +185,9 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
 - 2026-06-30 - T23 Admin Callback Button Runtime Coverage: extracted admin
   callback dispatch into a testable runtime helper and added regression
   coverage that presses every main dashboard button payload.
+- 2026-06-30 - T24 Button-Driven Working Time Admin UX: changed `Рабочее время`
+  from command-only help into a date/preset/hour/confirmation button flow while
+  keeping `/open`, `/open_day`, `/close`, and `/close_day` as fast shortcuts.
 
 ## Completed Bootstrap Work
 
@@ -224,7 +227,9 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
 - Admin can create/reopen free time with `/open <YYYY-MM-DD> <HH:MM>` or
   `/open_day <YYYY-MM-DD> <HH:MM> <HH:MM>`, hide one free slot with
   `/close <YYYY-MM-DD> <HH:MM>`, or close the remaining free slots in a day
-  with `/close_day <YYYY-MM-DD> <HH:MM>`.
+  with `/close_day <YYYY-MM-DD> <HH:MM>`. The `Рабочее время` admin button now
+  provides date selection, presets, per-hour actions, and confirmation before
+  applying those same mutations.
 - `/admin` opens the admin dashboard: upcoming bookings with client links,
   client counts, free slots, weekly revenue, pending bonuses, and quick controls
   for records, clients, metrics, manual booking, working time, today, and

@@ -75,13 +75,26 @@ Use numeric client ID when a Telegram username is missing or has changed.
 Use this when you want to create a working day, reopen a closed hour, hide one
 free hour, or close the rest of the day.
 
+Primary path:
+
+1. Open `/admin`.
+2. Press `Рабочее время`.
+3. Choose a date.
+4. Choose a preset action: open day 10:00-20:00, open day 12:00-20:00,
+   close the whole day, close from 16:00/17:00/18:00, or open/close a specific
+   hour.
+5. Confirm the action.
+
 Opening a day creates missing one-hour slots from the start time up to, but not
 including, the end time. For example, 10:00-20:00 creates client-visible starts
 10:00 through 19:00.
 
-Closing commands do not close slots that already have an active booking.
+Closing actions do not close slots that already have an active booking.
 Opening a slot with an active overlapping booking is allowed, but the client
-self-booking list still hides that time because it is occupied.
+self-booking list still hides that time because it is occupied. The date screen
+shows occupied hours as booking buttons.
+
+The command format remains available as a fast operator shortcut:
 
 ```text
 /open <YYYY-MM-DD> <HH:MM>
@@ -99,8 +112,7 @@ Examples:
 /close_day 2026-07-04 16:00
 ```
 
-Open `/admin` -> `Ближайшие даты` -> a date to see the command hint with the
-selected date.
+Open `/admin` -> `Рабочее время` when you do not want to type command formats.
 
 ## Referral Bonuses
 
