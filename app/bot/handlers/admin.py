@@ -104,6 +104,29 @@ SLOT_SCHEDULE_HELP_TEXT = "\n".join(
     ]
 )
 SLOT_CLOSING_HELP_TEXT = SLOT_SCHEDULE_HELP_TEXT
+WORKING_TIME_DAYS_TO_SHOW = 14
+WORKING_DAY_PRESETS = (
+    ("10:00", "20:00"),
+    ("12:00", "20:00"),
+    ("13:00", "20:00"),
+)
+WORKING_HOUR_STARTS = (
+    "10:00",
+    "11:00",
+    "12:00",
+    "13:00",
+    "14:00",
+    "15:00",
+    "16:00",
+    "17:00",
+    "18:00",
+    "19:00",
+)
+CLOSE_REST_PRESETS = ("16:00", "17:00", "18:00")
+WORKING_OPEN_DAY = "od"
+WORKING_CLOSE_DAY = "cd"
+WORKING_OPEN_SLOT = "os"
+WORKING_CLOSE_SLOT = "cs"
 
 
 class AdminAccessDenied(PermissionError):
@@ -168,6 +191,14 @@ class ManualBookingCommand:
     duration_minutes: int
     price_amount: Decimal
     service: str
+
+
+@dataclass(frozen=True, slots=True)
+class WorkingTimeOperation:
+    operation: str
+    selected_date: date
+    start_time: str
+    end_time: str | None = None
 
 
 def is_admin_user(telegram_user_id: int | None, settings: Settings) -> bool:
@@ -983,6 +1014,191 @@ def handle_admin_mark_referral_bonus_awarded(
     )
 
 
+def handle_admin_working_time_dates(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    start_date: date | None = None,
+    days: int = WORKING_TIME_DAYS_TO_SHOW,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    first_date = start_date or datetime.now(settings.timezone_info).date()
+    dates = tuple(first_date + timedelta(days=offset) for offset in range(days))
+    return AdminRuntimeResponse(
+        text="\n".join(
+            [
+                "Рабочее время",
+                "",
+                "Выберите дату. Внутри будут готовые кнопки: открыть день, "
+                "закрыть день, закрыть остаток дня или открыть/закрыть час.",
+                "",
+                "Команды с форматом остаются быстрым режимом:",
+                "/open_day 2026-07-12 10:00 20:00",
+                "/close_day 2026-07-12 16:00",
+            ]
+        ),
+        buttons=tuple(
+            _working_time_date_button(
+                value,
+                label=_working_time_date_label(session, settings, value),
+            )
+            for value in dates
+        )
+        + (_admin_menu_button(),),
+    )
+
+
+def handle_admin_working_time_date_view(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    selected_date: date,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    slots = _slots_for_date(session, settings, selected_date)
+    active_bookings = tuple(
+        booking
+        for booking in _bookings_for_date(session, settings, selected_date)
+        if booking.status in ADMIN_ACTIVE_BOOKING_STATUSES
+    )
+    open_count = sum(1 for slot in slots if not slot.is_blocked)
+    blocked_count = sum(1 for slot in slots if slot.is_blocked)
+    lines = [
+        f"Рабочее время: {_format_date_label(selected_date)}",
+        f"Слотов: {len(slots)}",
+        f"Открыто: {open_count}",
+        f"Закрыто: {blocked_count}",
+        f"Активных записей: {len(active_bookings)}",
+        "",
+        "Выберите готовое действие. Перед изменением будет подтверждение.",
+    ]
+    if active_bookings:
+        lines.append("")
+        lines.append("Записи:")
+        lines.extend(_booking_line(booking, settings) for booking in active_bookings)
+
+    buttons: list[AdminRuntimeButton] = []
+    for start_time, end_time in WORKING_DAY_PRESETS:
+        if not _is_future_working_time(selected_date, start_time, settings):
+            continue
+        buttons.append(
+            _working_time_confirm_button(
+                label=f"Открыть день {start_time}-{end_time}",
+                operation=WORKING_OPEN_DAY,
+                selected_date=selected_date,
+                start_time=start_time,
+                end_time=end_time,
+            )
+        )
+
+    today = datetime.now(settings.timezone_info).date()
+    if slots and selected_date > today:
+        buttons.append(
+            _working_time_confirm_button(
+                label="Закрыть весь день",
+                operation=WORKING_CLOSE_DAY,
+                selected_date=selected_date,
+                start_time="00:00",
+            )
+        )
+    for close_start in CLOSE_REST_PRESETS:
+        if not slots:
+            continue
+        if _is_future_working_time(selected_date, close_start, settings):
+            buttons.append(
+                _working_time_confirm_button(
+                    label=f"Закрыть с {close_start}",
+                    operation=WORKING_CLOSE_DAY,
+                    selected_date=selected_date,
+                    start_time=close_start,
+                )
+            )
+
+    buttons.extend(
+        _working_time_hour_buttons(session, settings, selected_date=selected_date)
+    )
+    buttons.extend((_working_time_dates_button(), _admin_menu_button()))
+    return AdminRuntimeResponse(text="\n".join(lines), buttons=tuple(buttons))
+
+
+def handle_admin_working_time_confirm_prompt(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    value: str | None,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    operation = _parse_working_time_operation(value)
+    return AdminRuntimeResponse(
+        text="\n".join(
+            [
+                "Подтвердите действие",
+                "",
+                _working_time_operation_summary(operation),
+            ]
+        ),
+        buttons=(
+            AdminRuntimeButton(
+                label="Да, выполнить",
+                callback_data=admin_callback_data(
+                    AdminMenuAction.WORKING_TIME_APPLY,
+                    _working_time_operation_value(operation),
+                ),
+            ),
+            _working_time_date_button(
+                operation.selected_date,
+                label="Назад к дате",
+            ),
+            _working_time_dates_button(),
+            _admin_menu_button(),
+        ),
+    )
+
+
+def handle_admin_working_time_apply(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    value: str | None,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    operation = _parse_working_time_operation(value)
+    command_text = _working_time_command_text(operation)
+    if operation.operation == WORKING_OPEN_DAY:
+        return handle_admin_open_day_command(
+            session,
+            settings,
+            telegram_user_id=telegram_user_id,
+            command_text=command_text,
+        )
+    if operation.operation == WORKING_OPEN_SLOT:
+        return handle_admin_open_slot_command(
+            session,
+            settings,
+            telegram_user_id=telegram_user_id,
+            command_text=command_text,
+        )
+    if operation.operation == WORKING_CLOSE_DAY:
+        return handle_admin_close_day_command(
+            session,
+            settings,
+            telegram_user_id=telegram_user_id,
+            command_text=command_text,
+        )
+    if operation.operation == WORKING_CLOSE_SLOT:
+        return handle_admin_close_slot_command(
+            session,
+            settings,
+            telegram_user_id=telegram_user_id,
+            command_text=command_text,
+        )
+    raise ValueError("Неизвестное действие рабочего времени.")
+
+
 def handle_admin_schedule_dates(
     session: Session,
     settings: Settings,
@@ -1534,6 +1750,59 @@ async def dispatch_admin_callback_payload(
                         start_date=start_date,
                     )
                 )
+    if async_session_factory is not None and action is AdminMenuAction.CLOSE_SLOTS:
+        start_date = datetime.now(settings.timezone_info).date()
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_working_time_dates(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    start_date=start_date,
+                )
+            )
+    if (
+        async_session_factory is not None
+        and action is AdminMenuAction.WORKING_TIME_DATE
+    ):
+        selected_date = _parse_date_value(value)
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_working_time_date_view(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    selected_date=selected_date,
+                )
+            )
+    if (
+        async_session_factory is not None
+        and action is AdminMenuAction.WORKING_TIME_CONFIRM
+    ):
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_working_time_confirm_prompt(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    value=value,
+                )
+            )
+    if (
+        async_session_factory is not None
+        and action is AdminMenuAction.WORKING_TIME_APPLY
+    ):
+        async with async_session_factory() as async_session:
+            response = await async_session.run_sync(
+                lambda session: handle_admin_working_time_apply(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    value=value,
+                )
+            )
+            await async_session.commit()
+            return response
     if async_session_factory is not None and action is AdminMenuAction.SCHEDULE_DATE:
         selected_date = _parse_date_value(value)
         async with async_session_factory() as async_session:
@@ -1991,6 +2260,217 @@ def _normalize_username_reference(client_ref: str) -> str | None:
         value = value[1:]
     value = value.split("/", maxsplit=1)[0].strip()
     return value or None
+
+
+def _working_time_date_label(
+    session: Session,
+    settings: Settings,
+    selected_date: date,
+) -> str:
+    slots = _slots_for_date(session, settings, selected_date)
+    active_count = sum(
+        1
+        for booking in _bookings_for_date(session, settings, selected_date)
+        if booking.status in ADMIN_ACTIVE_BOOKING_STATUSES
+    )
+    if not slots and not active_count:
+        return f"{_format_date_label(selected_date)} · нет слотов"
+    open_count = sum(1 for slot in slots if not slot.is_blocked)
+    blocked_count = sum(1 for slot in slots if slot.is_blocked)
+    return (
+        f"{_format_date_label(selected_date)} · "
+        f"{open_count} откр / {blocked_count} закр / {active_count} зап"
+    )
+
+
+def _working_time_date_button(
+    value: date,
+    *,
+    label: str | None = None,
+) -> AdminRuntimeButton:
+    return AdminRuntimeButton(
+        label=label or _format_date_label(value),
+        callback_data=admin_callback_data(
+            AdminMenuAction.WORKING_TIME_DATE,
+            value.isoformat(),
+        ),
+    )
+
+
+def _working_time_dates_button() -> AdminRuntimeButton:
+    return AdminRuntimeButton(
+        label="Назад к датам",
+        callback_data=admin_callback_data(AdminMenuAction.CLOSE_SLOTS),
+    )
+
+
+def _working_time_confirm_button(
+    *,
+    label: str,
+    operation: str,
+    selected_date: date,
+    start_time: str,
+    end_time: str | None = None,
+) -> AdminRuntimeButton:
+    return AdminRuntimeButton(
+        label=label,
+        callback_data=admin_callback_data(
+            AdminMenuAction.WORKING_TIME_CONFIRM,
+            _working_time_operation_value(
+                WorkingTimeOperation(
+                    operation=operation,
+                    selected_date=selected_date,
+                    start_time=start_time,
+                    end_time=end_time,
+                )
+            ),
+        ),
+    )
+
+
+def _working_time_hour_buttons(
+    session: Session,
+    settings: Settings,
+    *,
+    selected_date: date,
+) -> tuple[AdminRuntimeButton, ...]:
+    buttons: list[AdminRuntimeButton] = []
+    for start_time in WORKING_HOUR_STARTS:
+        if not _is_future_working_time(selected_date, start_time, settings):
+            continue
+        starts_at = _parse_local_datetime(selected_date.isoformat(), start_time)
+        slot = _find_slot_by_local_start(session, settings, starts_at=starts_at)
+        if slot is None:
+            buttons.append(
+                _working_time_confirm_button(
+                    label=f"Открыть {start_time}",
+                    operation=WORKING_OPEN_SLOT,
+                    selected_date=selected_date,
+                    start_time=start_time,
+                )
+            )
+            continue
+
+        booking = _active_booking_for_slot(session, slot)
+        if booking is not None:
+            buttons.append(
+                AdminRuntimeButton(
+                    label=f"{start_time} · запись #{booking.id}",
+                    callback_data=admin_callback_data(
+                        AdminMenuAction.BOOKING_DETAIL,
+                        booking.id,
+                    ),
+                )
+            )
+            continue
+
+        if slot.is_blocked:
+            buttons.append(
+                _working_time_confirm_button(
+                    label=f"Открыть {start_time}",
+                    operation=WORKING_OPEN_SLOT,
+                    selected_date=selected_date,
+                    start_time=start_time,
+                )
+            )
+        else:
+            buttons.append(
+                _working_time_confirm_button(
+                    label=f"Закрыть {start_time}",
+                    operation=WORKING_CLOSE_SLOT,
+                    selected_date=selected_date,
+                    start_time=start_time,
+                )
+            )
+    return tuple(buttons)
+
+
+def _is_future_working_time(
+    selected_date: date,
+    start_time: str,
+    settings: Settings,
+) -> bool:
+    starts_at = _parse_local_datetime(selected_date.isoformat(), start_time)
+    now_local = datetime.now(settings.timezone_info).replace(tzinfo=None)
+    return starts_at > now_local
+
+
+def _working_time_operation_value(operation: WorkingTimeOperation) -> str:
+    parts = [
+        operation.operation,
+        operation.selected_date.isoformat(),
+        operation.start_time,
+    ]
+    if operation.end_time is not None:
+        parts.append(operation.end_time)
+    return "|".join(parts)
+
+
+def _parse_working_time_operation(value: str | None) -> WorkingTimeOperation:
+    if value is None:
+        raise ValueError("Missing callback value")
+    parts = value.split("|")
+    if len(parts) not in (3, 4):
+        raise ValueError("Invalid callback value")
+
+    operation, raw_date, start_time = parts[:3]
+    end_time = parts[3] if len(parts) == 4 else None
+    if operation not in {
+        WORKING_OPEN_DAY,
+        WORKING_CLOSE_DAY,
+        WORKING_OPEN_SLOT,
+        WORKING_CLOSE_SLOT,
+    }:
+        raise ValueError("Invalid callback value")
+    if operation == WORKING_OPEN_DAY and end_time is None:
+        raise ValueError("Invalid callback value")
+    if operation != WORKING_OPEN_DAY and end_time is not None:
+        raise ValueError("Invalid callback value")
+
+    try:
+        selected_date = date.fromisoformat(raw_date)
+    except ValueError as exc:
+        raise ValueError("Invalid callback value") from exc
+    _parse_local_datetime(raw_date, start_time)
+    if end_time is not None:
+        _parse_local_datetime(raw_date, end_time)
+    return WorkingTimeOperation(
+        operation=operation,
+        selected_date=selected_date,
+        start_time=start_time,
+        end_time=end_time,
+    )
+
+
+def _working_time_operation_summary(operation: WorkingTimeOperation) -> str:
+    formatted_date = _format_date_label(operation.selected_date)
+    if operation.operation == WORKING_OPEN_DAY:
+        return (
+            f"Открыть рабочий день: {formatted_date} "
+            f"{operation.start_time}-{operation.end_time}"
+        )
+    if operation.operation == WORKING_CLOSE_DAY:
+        if operation.start_time == "00:00":
+            return f"Закрыть свободные слоты за весь день: {formatted_date}"
+        return f"Закрыть свободные слоты: {formatted_date} с {operation.start_time}"
+    if operation.operation == WORKING_OPEN_SLOT:
+        return f"Открыть час: {formatted_date} {operation.start_time}"
+    if operation.operation == WORKING_CLOSE_SLOT:
+        return f"Закрыть свободный час: {formatted_date} {operation.start_time}"
+    raise ValueError("Invalid callback value")
+
+
+def _working_time_command_text(operation: WorkingTimeOperation) -> str:
+    selected_date = operation.selected_date.isoformat()
+    if operation.operation == WORKING_OPEN_DAY:
+        return f"/open_day {selected_date} {operation.start_time} {operation.end_time}"
+    if operation.operation == WORKING_CLOSE_DAY:
+        return f"/close_day {selected_date} {operation.start_time}"
+    if operation.operation == WORKING_OPEN_SLOT:
+        return f"/open {selected_date} {operation.start_time}"
+    if operation.operation == WORKING_CLOSE_SLOT:
+        return f"/close {selected_date} {operation.start_time}"
+    raise ValueError("Invalid callback value")
 
 
 def _parse_admin_runtime_payload(

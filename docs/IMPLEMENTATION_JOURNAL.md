@@ -367,3 +367,12 @@ Status: append-only
 - Evidence collected: targeted admin callback test; ruff check; ruff format --check; full pytest passed with 88 tests; integrity check; skill security gate.
 - Follow-ups: Smoke-test main admin buttons in Telegram after restart.
 - Notes: No schema migration. Router behavior now calls the same `dispatch_admin_callback_payload` helper covered by tests.
+
+### 2026-06-30 - T24 - Button-Driven Working Time Admin UX
+
+- Scope: `app/bot/keyboards.py`, `app/bot/handlers/admin.py`, `tests/test_admin_booking.py`, and operator/product/handoff docs.
+- Why: Admin working-time actions required memorizing strict command formats, which made the admin UI feel technical and easy to misuse.
+- Decisions applied: `D-002`, `D-003`, `D-004`
+- Evidence collected: targeted admin working-time button-flow test; ruff check; ruff format --check; full pytest passed with 89 tests; integrity check; skill security gate.
+- Follow-ups: Smoke-test `/admin` -> `Рабочее время` -> date -> open day -> confirmation, then close one test hour from Telegram.
+- Notes: No schema migration. Button actions reuse the same server-side schedule mutation handlers as the command shortcuts, so booking-overlap and active-booking protections remain in one place.

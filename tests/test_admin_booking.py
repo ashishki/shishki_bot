@@ -418,6 +418,102 @@ async def test_admin_dashboard_buttons_dispatch_runtime_responses() -> None:
         await engine.dispose()
 
 
+@pytest.mark.asyncio
+async def test_admin_working_time_button_flow_opens_day_and_closes_hour() -> None:
+    engine = db_session.create_database_engine("sqlite+aiosqlite:///:memory:")
+    await db_session.create_all(engine)
+    session_factory = db_session.create_session_factory(engine)
+    settings = _settings()
+    selected_date = (datetime.now(settings.timezone_info) + timedelta(days=3)).date()
+
+    try:
+        menu = await dispatch_admin_callback_payload(
+            admin_callback_data(AdminMenuAction.CLOSE_SLOTS),
+            settings,
+            telegram_user_id=111,
+            async_session_factory=session_factory,
+        )
+        assert "Выберите дату" in menu.text
+        date_button = _button_containing(menu.buttons, selected_date.isoformat())
+
+        date_view = await dispatch_admin_callback_payload(
+            date_button.callback_data,
+            settings,
+            telegram_user_id=111,
+            async_session_factory=session_factory,
+        )
+        assert "Перед изменением будет подтверждение" in date_view.text
+        open_day_button = _button_with_label(date_view.buttons, "Открыть день 10:00")
+
+        confirm = await dispatch_admin_callback_payload(
+            open_day_button.callback_data,
+            settings,
+            telegram_user_id=111,
+            async_session_factory=session_factory,
+        )
+        assert "Подтвердите действие" in confirm.text
+        assert "Открыть рабочий день" in confirm.text
+
+        opened = await dispatch_admin_callback_payload(
+            confirm.buttons[0].callback_data,
+            settings,
+            telegram_user_id=111,
+            async_session_factory=session_factory,
+        )
+        assert "Рабочий день открыт" in opened.text
+        assert "Создано слотов: 10." in opened.text
+
+        date_view = await dispatch_admin_callback_payload(
+            date_button.callback_data,
+            settings,
+            telegram_user_id=111,
+            async_session_factory=session_factory,
+        )
+        close_hour_button = _button_with_label(date_view.buttons, "Закрыть 10:00")
+        close_confirm = await dispatch_admin_callback_payload(
+            close_hour_button.callback_data,
+            settings,
+            telegram_user_id=111,
+            async_session_factory=session_factory,
+        )
+        assert "Закрыть свободный час" in close_confirm.text
+
+        closed = await dispatch_admin_callback_payload(
+            close_confirm.buttons[0].callback_data,
+            settings,
+            telegram_user_id=111,
+            async_session_factory=session_factory,
+        )
+        assert "Слот закрыт" in closed.text
+
+        async with session_factory() as async_session:
+            slots = await async_session.run_sync(
+                lambda session: list(
+                    session.scalars(
+                        select(Slot)
+                        .where(
+                            Slot.starts_at
+                            >= datetime.combine(selected_date, datetime.min.time())
+                        )
+                        .where(
+                            Slot.starts_at
+                            < datetime.combine(
+                                selected_date + timedelta(days=1),
+                                datetime.min.time(),
+                            )
+                        )
+                        .order_by(Slot.starts_at)
+                    )
+                )
+            )
+
+        assert len(slots) == 10
+        assert slots[0].is_blocked
+        assert all(not slot.is_blocked for slot in slots[1:])
+    finally:
+        await engine.dispose()
+
+
 def test_admin_reschedule_notifies_client() -> None:
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
@@ -751,6 +847,20 @@ class FakeSender:
 
     def send_message(self, recipient_telegram_id: int, text: str) -> None:
         self.messages.append((recipient_telegram_id, text))
+
+
+def _button_with_label(buttons, expected_label: str):
+    for button in buttons:
+        if button.label.startswith(expected_label):
+            return button
+    raise AssertionError(f"Button not found: {expected_label}")
+
+
+def _button_containing(buttons, expected_value: str):
+    for button in buttons:
+        if button.callback_data and expected_value in button.callback_data:
+            return button
+    raise AssertionError(f"Button callback not found: {expected_value}")
 
 
 def _settings() -> Settings:

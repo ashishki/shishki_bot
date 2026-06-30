@@ -89,9 +89,11 @@ Acceptance criteria:
 4. Booking changes create status/change history records.
 5. Relevant changes send client notifications or log delivery failure.
 6. Admin can create/reopen a single hour or working day from Telegram.
-7. Admin can close one free slot or the remaining free slots in a day without
+7. Admin can use button-driven working-time controls with date selection,
+   presets, per-hour actions, and confirmation before schedule changes.
+8. Admin can close one free slot or the remaining free slots in a day without
    changing occupied active bookings.
-8. Admin can open client list/cards and see per-client visit, spend, current
+9. Admin can open client list/cards and see per-client visit, spend, current
    booking, history, and referral metrics.
 
 Out of scope for v1: web admin panel and multi-admin permissions beyond a simple allowlist.
