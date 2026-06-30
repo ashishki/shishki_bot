@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.bot.handlers.admin import (
     AdminAccessDenied,
+    dispatch_admin_callback_payload,
     handle_admin_cancel_booking,
     handle_admin_close_day_command,
     handle_admin_close_slot_command,
@@ -21,7 +22,9 @@ from app.bot.handlers.admin import (
     handle_admin_reschedule_booking,
     handle_admin_update_booking_details,
 )
+from app.bot.keyboards import AdminMenuAction, admin_callback_data
 from app.config import Settings
+from app.db import session as db_session
 from app.db.models import (
     Base,
     Booking,
@@ -347,6 +350,72 @@ def test_admin_dashboard_and_metrics_show_bookings_clients_and_people_metrics() 
     assert "Выручка: 100 GEL" in metrics.text
     assert "Нетто: 100 GEL" in metrics.text
     assert "Test Client #1: 1 визитов, 100 GEL" in metrics.text
+
+
+@pytest.mark.asyncio
+async def test_admin_dashboard_buttons_dispatch_runtime_responses() -> None:
+    engine = db_session.create_database_engine("sqlite+aiosqlite:///:memory:")
+    await db_session.create_all(engine)
+    session_factory = db_session.create_session_factory(engine)
+    settings = _settings()
+    starts_at = (datetime.now(settings.timezone_info) + timedelta(days=1)).replace(
+        hour=10,
+        minute=0,
+        second=0,
+        microsecond=0,
+        tzinfo=None,
+    )
+
+    try:
+        async with session_factory() as async_session:
+            await async_session.run_sync(
+                lambda session: (
+                    _create_client(session),
+                    _create_slot(session, starts_at=starts_at),
+                )
+            )
+            await async_session.commit()
+
+        dashboard = await dispatch_admin_callback_payload(
+            admin_callback_data(AdminMenuAction.MENU),
+            settings,
+            telegram_user_id=111,
+            async_session_factory=session_factory,
+        )
+
+        assert "Админ-панель" in dashboard.text
+        assert tuple(button.label for button in dashboard.buttons) == (
+            "Записи",
+            "Клиенты",
+            "Метрики",
+            "Создать запись",
+            "Рабочее время",
+            "Сегодня",
+            "Бонусы",
+        )
+
+        responses: dict[str, str] = {}
+        for button in dashboard.buttons:
+            assert button.callback_data is not None
+            response = await dispatch_admin_callback_payload(
+                button.callback_data,
+                settings,
+                telegram_user_id=111,
+                async_session_factory=session_factory,
+            )
+            responses[button.label] = response.text
+            assert response.text
+            assert "Админ-действие" not in response.text
+
+        assert "Даты расписания" in responses["Записи"]
+        assert "Клиенты" in responses["Клиенты"]
+        assert "Метрики" in responses["Метрики"]
+        assert "Создать ручную запись" in responses["Создать запись"]
+        assert "Рабочее время" in responses["Рабочее время"]
+        assert "Расписание:" in responses["Сегодня"]
+        assert "Бонусов к выдаче пока нет" in responses["Бонусы"]
+    finally:
+        await engine.dispose()
 
 
 def test_admin_reschedule_notifies_client() -> None:

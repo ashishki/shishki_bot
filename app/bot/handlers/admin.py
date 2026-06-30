@@ -1411,10 +1411,12 @@ def build_admin_router(
     async def admin_callback(callback: CallbackQuery) -> None:
         telegram_user_id = callback.from_user.id if callback.from_user else None
         try:
-            response = await _dispatch_admin_callback(
+            response = await dispatch_admin_callback_payload(
                 callback.data,
-                telegram_user_id,
-                callback.bot,
+                settings,
+                telegram_user_id=telegram_user_id,
+                async_session_factory=async_session_factory,
+                bot=callback.bot,
             )
         except AdminAccessDenied:
             await callback.answer(ADMIN_ACCESS_DENIED_TEXT, show_alert=True)
@@ -1461,247 +1463,6 @@ def build_admin_router(
             parse_mode="HTML",
         )
 
-    async def _dispatch_admin_callback(
-        payload: str | None,
-        telegram_user_id: int | None,
-        bot,
-    ) -> AdminRuntimeResponse:
-        action, value = _parse_admin_runtime_payload(payload)
-        if action is AdminMenuAction.TODAY:
-            selected_date = datetime.now(settings.timezone_info).date()
-            if async_session_factory is not None:
-                async with async_session_factory() as async_session:
-                    return await async_session.run_sync(
-                        lambda session: handle_admin_schedule_date_view(
-                            session,
-                            settings,
-                            telegram_user_id=telegram_user_id,
-                            selected_date=selected_date,
-                        )
-                    )
-        if action is AdminMenuAction.THIS_WEEK:
-            start_date = datetime.now(settings.timezone_info).date()
-            if async_session_factory is not None:
-                async with async_session_factory() as async_session:
-                    return await async_session.run_sync(
-                        lambda session: handle_admin_schedule_dates(
-                            session,
-                            settings,
-                            telegram_user_id=telegram_user_id,
-                            start_date=start_date,
-                        )
-                    )
-        if (
-            async_session_factory is not None
-            and action is AdminMenuAction.SCHEDULE_DATE
-        ):
-            selected_date = _parse_date_value(value)
-            async with async_session_factory() as async_session:
-                return await async_session.run_sync(
-                    lambda session: handle_admin_schedule_date_view(
-                        session,
-                        settings,
-                        telegram_user_id=telegram_user_id,
-                        selected_date=selected_date,
-                    )
-                )
-        if (
-            async_session_factory is not None
-            and action is AdminMenuAction.BOOKING_DETAIL
-        ):
-            booking_id = _parse_int_value(value)
-            async with async_session_factory() as async_session:
-                return await async_session.run_sync(
-                    lambda session: handle_admin_booking_detail_view(
-                        session,
-                        settings,
-                        telegram_user_id=telegram_user_id,
-                        booking_id=booking_id,
-                    )
-                )
-        if async_session_factory is not None and action is AdminMenuAction.CLIENTS:
-            async with async_session_factory() as async_session:
-                return await async_session.run_sync(
-                    lambda session: handle_admin_clients_list(
-                        session,
-                        settings,
-                        telegram_user_id=telegram_user_id,
-                    )
-                )
-        if async_session_factory is not None and action is AdminMenuAction.CLIENT_CARD:
-            client_id = _parse_int_value(value)
-            async with async_session_factory() as async_session:
-                return await async_session.run_sync(
-                    lambda session: handle_admin_client_card_view(
-                        session,
-                        settings,
-                        telegram_user_id=telegram_user_id,
-                        client_id=client_id,
-                    )
-                )
-        if (
-            async_session_factory is not None
-            and action is AdminMenuAction.REFERRAL_BONUSES
-        ):
-            async with async_session_factory() as async_session:
-                return await async_session.run_sync(
-                    lambda session: handle_admin_referral_bonuses(
-                        session,
-                        settings,
-                        telegram_user_id=telegram_user_id,
-                    )
-                )
-        if (
-            async_session_factory is not None
-            and action is AdminMenuAction.MARK_REFERRAL_BONUS_AWARDED
-        ):
-            bonus_id = _parse_int_value(value)
-            async with async_session_factory() as async_session:
-                response = await async_session.run_sync(
-                    lambda session: handle_admin_mark_referral_bonus_awarded(
-                        session,
-                        settings,
-                        telegram_user_id=telegram_user_id,
-                        bonus_id=bonus_id,
-                    )
-                )
-                await async_session.commit()
-                return response
-        if async_session_factory is not None and action is AdminMenuAction.REVENUE:
-            async with async_session_factory() as async_session:
-                return await async_session.run_sync(
-                    lambda session: handle_admin_metrics_dashboard(
-                        session,
-                        settings,
-                        telegram_user_id=telegram_user_id,
-                    )
-                )
-        if action is AdminMenuAction.MANUAL_BOOKING:
-            require_admin_user(telegram_user_id, settings)
-            return AdminRuntimeResponse(
-                text=MANUAL_BOOKING_HELP_TEXT,
-                buttons=(_admin_menu_button(),),
-            )
-        if action is AdminMenuAction.CLOSE_SLOTS:
-            require_admin_user(telegram_user_id, settings)
-            return AdminRuntimeResponse(
-                text=SLOT_SCHEDULE_HELP_TEXT,
-                buttons=(_admin_menu_button(),),
-            )
-        if (
-            async_session_factory is not None
-            and action is AdminMenuAction.RESCHEDULE_DATE
-        ):
-            booking_id, selected_date = _parse_booking_date_value(value)
-            async with async_session_factory() as async_session:
-                if selected_date is None:
-                    return await async_session.run_sync(
-                        lambda session: handle_admin_reschedule_date_start(
-                            session,
-                            settings,
-                            telegram_user_id=telegram_user_id,
-                            booking_id=booking_id,
-                        )
-                    )
-                return await async_session.run_sync(
-                    lambda session: handle_admin_reschedule_date_view(
-                        session,
-                        settings,
-                        telegram_user_id=telegram_user_id,
-                        booking_id=booking_id,
-                        selected_date=selected_date,
-                    )
-                )
-        if (
-            async_session_factory is not None
-            and action is AdminMenuAction.RESCHEDULE_SLOT
-        ):
-            booking_id, slot_id = _parse_two_ints(value)
-            async with async_session_factory() as async_session:
-                return await async_session.run_sync(
-                    lambda session: handle_admin_reschedule_confirm_prompt(
-                        session,
-                        settings,
-                        telegram_user_id=telegram_user_id,
-                        booking_id=booking_id,
-                        slot_id=slot_id,
-                    )
-                )
-        if (
-            async_session_factory is not None
-            and action is AdminMenuAction.CANCEL_BOOKING
-            and value
-        ):
-            booking_id = _parse_int_value(value)
-            async with async_session_factory() as async_session:
-                return await async_session.run_sync(
-                    lambda session: handle_admin_cancel_confirm_prompt(
-                        session,
-                        settings,
-                        telegram_user_id=telegram_user_id,
-                        booking_id=booking_id,
-                    )
-                )
-        if (
-            async_session_factory is not None
-            and action is AdminMenuAction.CONFIRM_RESCHEDULE
-        ):
-            booking_id, slot_id = _parse_two_ints(value)
-            async with async_session_factory() as async_session:
-                attempt = await async_session.run_sync(
-                    lambda session: _commit_admin_reschedule(
-                        session,
-                        settings,
-                        telegram_user_id=telegram_user_id,
-                        booking_id=booking_id,
-                        slot_id=slot_id,
-                    )
-                )
-                await _send_and_log_admin_notification(async_session, bot, attempt)
-                await async_session.commit()
-                return attempt.response
-        if (
-            async_session_factory is not None
-            and action is AdminMenuAction.CONFIRM_CANCEL
-        ):
-            booking_id = _parse_int_value(value)
-            async with async_session_factory() as async_session:
-                attempt = await async_session.run_sync(
-                    lambda session: _commit_admin_cancel(
-                        session,
-                        settings,
-                        telegram_user_id=telegram_user_id,
-                        booking_id=booking_id,
-                    )
-                )
-                await _send_and_log_admin_notification(async_session, bot, attempt)
-                await async_session.commit()
-                return attempt.response
-        if action is AdminMenuAction.MENU:
-            if async_session_factory is not None:
-                async with async_session_factory() as async_session:
-                    return await async_session.run_sync(
-                        lambda session: handle_admin_dashboard(
-                            session,
-                            settings,
-                            telegram_user_id=telegram_user_id,
-                        )
-                    )
-            menu = handle_admin_menu_command(telegram_user_id, settings)
-            return AdminRuntimeResponse(
-                text=menu.text,
-                buttons=tuple(
-                    AdminRuntimeButton(
-                        label=button.label,
-                        callback_data=button.callback_data,
-                    )
-                    for button in menu.buttons
-                ),
-            )
-
-        response = handle_admin_callback(telegram_user_id, settings, payload)
-        return AdminRuntimeResponse(text=response.text)
-
     def _to_inline_keyboard(buttons: tuple[MenuButton, ...]) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             inline_keyboard=[
@@ -1734,6 +1495,237 @@ def build_admin_router(
         )
 
     return router
+
+
+async def dispatch_admin_callback_payload(
+    payload: str | None,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    async_session_factory: Callable[
+        [],
+        AbstractAsyncContextManager[AsyncSession],
+    ]
+    | None = None,
+    bot: object | None = None,
+) -> AdminRuntimeResponse:
+    action, value = _parse_admin_runtime_payload(payload)
+    if action is AdminMenuAction.TODAY:
+        selected_date = datetime.now(settings.timezone_info).date()
+        if async_session_factory is not None:
+            async with async_session_factory() as async_session:
+                return await async_session.run_sync(
+                    lambda session: handle_admin_schedule_date_view(
+                        session,
+                        settings,
+                        telegram_user_id=telegram_user_id,
+                        selected_date=selected_date,
+                    )
+                )
+    if action is AdminMenuAction.THIS_WEEK:
+        start_date = datetime.now(settings.timezone_info).date()
+        if async_session_factory is not None:
+            async with async_session_factory() as async_session:
+                return await async_session.run_sync(
+                    lambda session: handle_admin_schedule_dates(
+                        session,
+                        settings,
+                        telegram_user_id=telegram_user_id,
+                        start_date=start_date,
+                    )
+                )
+    if async_session_factory is not None and action is AdminMenuAction.SCHEDULE_DATE:
+        selected_date = _parse_date_value(value)
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_schedule_date_view(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    selected_date=selected_date,
+                )
+            )
+    if async_session_factory is not None and action is AdminMenuAction.BOOKING_DETAIL:
+        booking_id = _parse_int_value(value)
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_booking_detail_view(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    booking_id=booking_id,
+                )
+            )
+    if async_session_factory is not None and action is AdminMenuAction.CLIENTS:
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_clients_list(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                )
+            )
+    if async_session_factory is not None and action is AdminMenuAction.CLIENT_CARD:
+        client_id = _parse_int_value(value)
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_client_card_view(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    client_id=client_id,
+                )
+            )
+    if async_session_factory is not None and action is AdminMenuAction.REFERRAL_BONUSES:
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_referral_bonuses(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                )
+            )
+    if (
+        async_session_factory is not None
+        and action is AdminMenuAction.MARK_REFERRAL_BONUS_AWARDED
+    ):
+        bonus_id = _parse_int_value(value)
+        async with async_session_factory() as async_session:
+            response = await async_session.run_sync(
+                lambda session: handle_admin_mark_referral_bonus_awarded(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    bonus_id=bonus_id,
+                )
+            )
+            await async_session.commit()
+            return response
+    if async_session_factory is not None and action is AdminMenuAction.REVENUE:
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_metrics_dashboard(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                )
+            )
+    if action is AdminMenuAction.MANUAL_BOOKING:
+        require_admin_user(telegram_user_id, settings)
+        return AdminRuntimeResponse(
+            text=MANUAL_BOOKING_HELP_TEXT,
+            buttons=(_admin_menu_button(),),
+        )
+    if action is AdminMenuAction.CLOSE_SLOTS:
+        require_admin_user(telegram_user_id, settings)
+        return AdminRuntimeResponse(
+            text=SLOT_SCHEDULE_HELP_TEXT,
+            buttons=(_admin_menu_button(),),
+        )
+    if async_session_factory is not None and action is AdminMenuAction.RESCHEDULE_DATE:
+        booking_id, selected_date = _parse_booking_date_value(value)
+        async with async_session_factory() as async_session:
+            if selected_date is None:
+                return await async_session.run_sync(
+                    lambda session: handle_admin_reschedule_date_start(
+                        session,
+                        settings,
+                        telegram_user_id=telegram_user_id,
+                        booking_id=booking_id,
+                    )
+                )
+            return await async_session.run_sync(
+                lambda session: handle_admin_reschedule_date_view(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    booking_id=booking_id,
+                    selected_date=selected_date,
+                )
+            )
+    if async_session_factory is not None and action is AdminMenuAction.RESCHEDULE_SLOT:
+        booking_id, slot_id = _parse_two_ints(value)
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_reschedule_confirm_prompt(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    booking_id=booking_id,
+                    slot_id=slot_id,
+                )
+            )
+    if (
+        async_session_factory is not None
+        and action is AdminMenuAction.CANCEL_BOOKING
+        and value
+    ):
+        booking_id = _parse_int_value(value)
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_cancel_confirm_prompt(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    booking_id=booking_id,
+                )
+            )
+    if (
+        async_session_factory is not None
+        and action is AdminMenuAction.CONFIRM_RESCHEDULE
+    ):
+        booking_id, slot_id = _parse_two_ints(value)
+        async with async_session_factory() as async_session:
+            attempt = await async_session.run_sync(
+                lambda session: _commit_admin_reschedule(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    booking_id=booking_id,
+                    slot_id=slot_id,
+                )
+            )
+            await _send_and_log_admin_notification(async_session, bot, attempt)
+            await async_session.commit()
+            return attempt.response
+    if async_session_factory is not None and action is AdminMenuAction.CONFIRM_CANCEL:
+        booking_id = _parse_int_value(value)
+        async with async_session_factory() as async_session:
+            attempt = await async_session.run_sync(
+                lambda session: _commit_admin_cancel(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    booking_id=booking_id,
+                )
+            )
+            await _send_and_log_admin_notification(async_session, bot, attempt)
+            await async_session.commit()
+            return attempt.response
+    if action is AdminMenuAction.MENU:
+        if async_session_factory is not None:
+            async with async_session_factory() as async_session:
+                return await async_session.run_sync(
+                    lambda session: handle_admin_dashboard(
+                        session,
+                        settings,
+                        telegram_user_id=telegram_user_id,
+                    )
+                )
+        menu = handle_admin_menu_command(telegram_user_id, settings)
+        return AdminRuntimeResponse(
+            text=menu.text,
+            buttons=tuple(
+                AdminRuntimeButton(
+                    label=button.label,
+                    callback_data=button.callback_data,
+                )
+                for button in menu.buttons
+            ),
+        )
+
+    response = handle_admin_callback(telegram_user_id, settings, payload)
+    return AdminRuntimeResponse(text=response.text)
 
 
 def _settings_location_links(settings: Settings) -> dict[str, str | None]:

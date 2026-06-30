@@ -839,3 +839,38 @@ Context-Refs:
   - docs/IMPLEMENTATION_CONTRACT.md#booking-integrity
   - docs/IMPLEMENTATION_CONTRACT.md#admin-authorization
   - docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity
+
+## T23: Admin Callback Button Runtime Coverage
+
+Owner:      codex
+Phase:      5
+Type:       none
+Depends-On: T22
+Status:     [x] complete
+Completed:  2026-06-30
+
+Objective: |
+  Ensure the main admin dashboard buttons execute through the same runtime
+  callback dispatch path that Telegram uses, instead of only testing static
+  button construction.
+
+Acceptance-Criteria:
+  - id: AC-1
+    description: "Every main admin dashboard button callback returns a concrete runtime response."
+    test: "tests/test_admin_booking.py::test_admin_dashboard_buttons_dispatch_runtime_responses"
+  - id: AC-2
+    description: "The admin router uses the same tested callback dispatch helper."
+    test: "tests/test_admin_booking.py::test_admin_dashboard_buttons_dispatch_runtime_responses"
+
+Files:
+  - app/bot/handlers/admin.py
+  - tests/test_admin_booking.py
+  - README.md
+  - docs/CODEX_PROMPT.md
+  - docs/tasks.md
+  - docs/IMPLEMENTATION_JOURNAL.md
+  - docs/EVIDENCE_INDEX.md
+
+Context-Refs:
+  - docs/spec.md#feature-4---admin-booking-management
+  - docs/IMPLEMENTATION_CONTRACT.md#admin-authorization
