@@ -5,9 +5,8 @@ bot for one stylist.
 
 ## Current Status
 
-- Phase 5 is complete. T22 is complete: admin can create/reopen working hours
-  from Telegram, client start shows the referral bonus entry point, and the
-  live July schedule was moved from 2026-07-10 to 2026-07-12.
+- Phase 5 is complete. T23 is complete: admin dashboard button callbacks are
+  regression-tested through the same runtime dispatch path used by Telegram.
 - Next task: none in the current task graph.
 - Cycle 9 T13 deployment/operator review findings were closed.
 - Production v1 remains deterministic: no production LLM behavior or external

@@ -8,10 +8,10 @@ Phase: 5
 ## Current State
 
 - Phase: 5
-- Baseline: T22 complete; task graph complete with 87 total tests.
+- Baseline: T23 complete; task graph complete with 88 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-30 - ruff check, ruff format --check, pytest `tests -q` (87 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-06-30 - ruff check, ruff format --check, pytest `tests -q` (88 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,7 +29,7 @@ Phase: 5
 
 ## Next Task
 
-none - implementation task graph complete through T22.
+none - implementation task graph complete through T23.
 
 For future changes, read:
 
@@ -182,6 +182,9 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   admin commands for opening one hour or a whole working day, restored the
   referral bonus CTA to the first client screen, and moved the live local July
   schedule from 2026-07-10 to 2026-07-12 after backup.
+- 2026-06-30 - T23 Admin Callback Button Runtime Coverage: extracted admin
+  callback dispatch into a testable runtime helper and added regression
+  coverage that presses every main dashboard button payload.
 
 ## Completed Bootstrap Work
 
@@ -226,7 +229,8 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   client counts, free slots, weekly revenue, pending bonuses, and quick controls
   for records, clients, metrics, manual booking, working time, today, and
   bonuses. The metrics screen shows weekly revenue/net and top clients by
-  completed visits/spend.
+  completed visits/spend. Dashboard button callbacks are regression-tested
+  through the runtime dispatch path used by Telegram.
 - Live local database was backed up to
   `/srv/openclaw-you/backups/shishki_bot/shishki_bot_before_official_slots_20260624_130105.db`
   before clearing test booking/slot records. Active official slots are

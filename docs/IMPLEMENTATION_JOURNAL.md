@@ -358,3 +358,12 @@ Status: append-only
 - Live schedule check: client-visible slots for 2026-07-10 are empty; client-visible slots for 2026-07-12 are 10:00 through 19:00.
 - Follow-ups: Smoke-test `/open_day`, `/open`, `/close_day`, and `/start` in Telegram after restart.
 - Notes: No schema migration. Opening a slot with an active overlapping booking does not make it client-bookable because the existing availability query hides active booking overlaps.
+
+### 2026-06-30 - T23 - Admin Callback Button Runtime Coverage
+
+- Scope: `app/bot/handlers/admin.py`, `tests/test_admin_booking.py`, and handoff docs.
+- Why: Admin dashboard buttons previously had static construction coverage but not a regression test that pressed each callback payload through the runtime dispatch path.
+- Decisions applied: `D-002`, `D-003`
+- Evidence collected: targeted admin callback test; ruff check; ruff format --check; full pytest passed with 88 tests; integrity check; skill security gate.
+- Follow-ups: Smoke-test main admin buttons in Telegram after restart.
+- Notes: No schema migration. Router behavior now calls the same `dispatch_admin_callback_payload` helper covered by tests.
