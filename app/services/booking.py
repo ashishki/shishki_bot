@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -45,6 +46,7 @@ ACTIVE_BOOKING_STATUSES = (
     BookingStatus.CONFIRMED,
     BookingStatus.RESCHEDULED,
 )
+DEFAULT_BOOKING_TIMEZONE = ZoneInfo("Asia/Tbilisi")
 
 
 class BookingServiceError(ValueError):
@@ -80,7 +82,7 @@ def create_manual_booking(
         raise BookingServiceError(f"Client not found: {client_id}")
 
     slot = _lock_available_slot(session, slot_id)
-    starts_at = _as_utc(slot.starts_at)
+    starts_at = _booking_time_from_slot(slot.starts_at)
     ends_at = starts_at + timedelta(minutes=duration_minutes)
     _ensure_no_active_booking_overlap(session, starts_at=starts_at, ends_at=ends_at)
 
@@ -151,7 +153,7 @@ def create_simple_booking(
         raise BookingServiceError(f"Client not found: {client_id}")
 
     slot = _lock_available_slot(session, slot_id)
-    starts_at = _as_utc(slot.starts_at)
+    starts_at = _booking_time_from_slot(slot.starts_at)
     ends_at = starts_at + timedelta(minutes=DEFAULT_HAIRCUT_DURATION_MINUTES)
     _ensure_no_active_booking_overlap(session, starts_at=starts_at, ends_at=ends_at)
 
@@ -253,7 +255,7 @@ def _reschedule_booking(
     booking = _get_booking(session, booking_id)
     new_slot = _lock_available_slot(session, new_slot_id)
     old_status = booking.status
-    starts_at = _as_utc(new_slot.starts_at)
+    starts_at = _booking_time_from_slot(new_slot.starts_at)
 
     try:
         with session.begin_nested():
@@ -473,5 +475,11 @@ def _validate_price(price_amount: Decimal) -> Decimal:
 
 def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
-        return value.replace(tzinfo=UTC)
+        return value.replace(tzinfo=DEFAULT_BOOKING_TIMEZONE).astimezone(UTC)
+    return value.astimezone(UTC)
+
+
+def _booking_time_from_slot(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value
     return value.astimezone(UTC)

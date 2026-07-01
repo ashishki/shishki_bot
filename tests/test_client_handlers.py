@@ -226,6 +226,36 @@ def test_client_haircut_booking_flow() -> None:
     assert "100 GEL" in confirmation.text
 
 
+def test_client_confirmation_uses_local_naive_slot_time() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    starts_at = (datetime.now(_settings().timezone_info) + timedelta(days=3)).replace(
+        hour=10,
+        minute=0,
+        second=0,
+        microsecond=0,
+        tzinfo=None,
+    )
+
+    with Session(engine, expire_on_commit=False) as session:
+        slot = _create_slot(session, starts_at=starts_at)
+
+        confirmation = handle_haircut_booking_confirmation(
+            session,
+            _settings(),
+            telegram_user_id=555,
+            slot_id=slot.id,
+            service=HAIRCUT_MALE_SERVICE,
+            display_name="Test Client",
+            username="test_client",
+        )
+        session.commit()
+
+    assert confirmation.booking.starts_at == starts_at
+    assert "\n10:00\n" in confirmation.text
+    assert "\n14:00\n" not in confirmation.text
+
+
 def test_client_callback_requires_confirmation_before_booking() -> None:
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)

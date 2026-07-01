@@ -1,7 +1,7 @@
 # Evidence Index - shishki_bot
 
 Version: 1.0
-Last updated: 2026-06-30
+Last updated: 2026-07-01
 
 This index points to durable proof. It is not proof by itself.
 
@@ -46,6 +46,7 @@ This index points to durable proof. It is not proof by itself.
 | T22 admin working time reopen and referral start CTA | tests/runtime/data | `app/bot/handlers/admin.py`, `app/bot/handlers/client.py`, `app/bot/keyboards.py`, `tests/test_admin_auth.py`, `tests/test_admin_booking.py`, `tests/test_client_handlers.py`, `<private-backup-path>` | Admin can create missing hourly slots and reopen blocked working time; the admin menu labels this as working time; client start menu includes referral bonus copy and a recommendations button; live 2026-07-10 client-visible slots are empty and live 2026-07-12 client-visible slots are 10:00 through 19:00 after backup. Commands run: ruff check, ruff format --check, pytest tests -q, integrity check, skill security gate; systemd service active. | 2026-06-30 | Yes |
 | T23 admin callback button runtime coverage | tests/runtime | `app/bot/handlers/admin.py`, `tests/test_admin_booking.py` | Admin dashboard button payloads for records, clients, metrics, manual booking, working time, today, and bonuses are dispatched through the same runtime callback helper used by Telegram and each returns a concrete response instead of falling back to a placeholder. Commands run: ruff check, ruff format --check, pytest tests -q, integrity check, skill security gate; systemd service active. | 2026-06-30 | Yes |
 | T24 button-driven working time admin UX | tests/runtime | `app/bot/keyboards.py`, `app/bot/handlers/admin.py`, `tests/test_admin_booking.py` | Working-time admin UX has date selection, open-day presets, close-rest presets, per-hour open/close actions, booking-detail buttons for occupied hours, and confirmation before schedule mutation; command shortcuts remain covered. Commands run: ruff check, ruff format --check, pytest tests -q, integrity check, skill security gate; systemd service active. | 2026-06-30 | Yes |
+| T25 local slot time confirmation fix | tests/runtime | `app/services/booking.py`, `tests/test_client_handlers.py` | Client confirmation for a local naive 10:00 slot shows 10:00 instead of a UTC-shifted time; booking creation and reschedule preserve naive business slot times while keeping UTC conversion for past-slot comparisons. Commands run: ruff check, ruff format --check, pytest tests -q, integrity check, skill security gate; systemd service active. | 2026-07-01 | Yes |
 
 ## Retrieval Rules
 

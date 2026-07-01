@@ -2,7 +2,7 @@
 
 Status: active
 Mode: Standard
-Last updated: 2026-06-30
+Last updated: 2026-07-01
 
 This task graph is the forward contract for Codex. Keep tasks small enough for
 one focused implementation session and update this file when scope changes.
@@ -916,3 +916,39 @@ Context-Refs:
   - docs/spec.md#feature-4---admin-booking-management
   - docs/IMPLEMENTATION_CONTRACT.md#admin-authorization
   - docs/IMPLEMENTATION_CONTRACT.md#booking-integrity
+
+## T25: Local Slot Time Confirmation Fix
+
+Owner:      codex
+Phase:      5
+Type:       bugfix
+Depends-On: T24
+Status:     [x] complete
+Completed:  2026-07-01
+
+Objective: |
+  Prevent client/admin confirmation messages from shifting local naive slot
+  times forward by treating them as UTC during booking creation.
+
+Acceptance-Criteria:
+  - id: AC-1
+    description: "A client booking confirmation for a local naive 10:00 slot shows 10:00, not a timezone-shifted time."
+    test: "tests/test_client_handlers.py::test_client_confirmation_uses_local_naive_slot_time"
+  - id: AC-2
+    description: "Booking service still preserves UTC-aware slot behavior and overlap protections."
+    test: "tests/test_booking_service.py"
+
+Files:
+  - app/services/booking.py
+  - tests/test_client_handlers.py
+  - README.md
+  - docs/CODEX_PROMPT.md
+  - docs/tasks.md
+  - docs/IMPLEMENTATION_JOURNAL.md
+  - docs/EVIDENCE_INDEX.md
+
+Context-Refs:
+  - docs/spec.md#feature-2---simple-haircut-booking
+  - docs/spec.md#feature-4---admin-booking-management
+  - docs/IMPLEMENTATION_CONTRACT.md#booking-integrity
+  - docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity
