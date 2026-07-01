@@ -952,3 +952,33 @@ Context-Refs:
   - docs/spec.md#feature-4---admin-booking-management
   - docs/IMPLEMENTATION_CONTRACT.md#booking-integrity
   - docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity
+
+## T26: Reminder Local Time Regression Coverage
+
+Owner:      codex
+Phase:      5
+Type:       bugfix
+Depends-On: T25
+Status:     [x] complete
+Completed:  2026-07-01
+
+Objective: |
+  Prove reminder messages preserve local naive appointment times and do not
+  shift them as UTC.
+
+Acceptance-Criteria:
+  - id: AC-1
+    description: "A reminder for a local naive 13:00 booking sends 13:00, not a timezone-shifted time."
+    test: "tests/test_reminders.py::test_scheduler_job_sends_naive_local_due_reminders"
+
+Files:
+  - tests/test_reminders.py
+  - README.md
+  - docs/CODEX_PROMPT.md
+  - docs/tasks.md
+  - docs/IMPLEMENTATION_JOURNAL.md
+  - docs/EVIDENCE_INDEX.md
+
+Context-Refs:
+  - docs/spec.md#feature-5---reminders-and-notifications
+  - docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity

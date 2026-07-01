@@ -5,8 +5,8 @@ bot for one stylist.
 
 ## Current Status
 
-- Phase 5 is complete. T25 is complete: client booking confirmations preserve
-  local business slot time instead of shifting naive SQLite times as UTC.
+- Phase 5 is complete. T26 is complete: reminder delivery now has regression
+  coverage proving local naive appointment times are sent without timezone shift.
 - Next task: none in the current task graph.
 - Cycle 9 T13 deployment/operator review findings were closed.
 - Production v1 remains deterministic: no production LLM behavior or external
