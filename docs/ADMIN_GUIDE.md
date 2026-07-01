@@ -120,11 +120,16 @@ Clients can request a personal referral link from the bot. When a new client
 enters through that link, the source is recorded. The referral is counted only
 after the referred client's booking is completed.
 
-Every 3 qualified referrals creates a pending bonus for professional hair
-cosmetics: care or styling. The scheduler sends the admin a one-time Telegram
-reminder for a newly pending bonus. Open `/admin` -> `Бонусы` to see pending
-bonuses, contact/open the client card if needed, and press `Выдано` after the
-product is given.
+For approved goodwill cases, the operator can add an audited manual credit to a
+client's referral progress. Manual credits are shown separately in the client
+card and count toward the same bonus threshold.
+
+Every 3 credited units creates a pending bonus for professional hair cosmetics:
+care or styling. Qualified referrals and manual credits are summed for the
+threshold. The scheduler sends the admin a one-time Telegram reminder for a
+newly pending bonus. Open `/admin` -> `Бонусы` to see pending bonuses,
+contact/open the client card if needed, and press `Выдано` after the product is
+given.
 
 ## Safe Operation Rules
 

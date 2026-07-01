@@ -19,6 +19,7 @@ from app.db.models import (
     Referral,
     ReferralBonus,
     ReferralBonusStatus,
+    ReferralManualCredit,
     ReferralStatus,
     Slot,
     User,
@@ -28,6 +29,7 @@ from app.services.finance import complete_booking
 from app.services.referrals import (
     REFERRAL_REWARD_LABEL,
     ensure_referral_code,
+    grant_manual_referral_credit,
     pending_referral_bonuses,
     referral_progress,
     register_referral_start,
@@ -82,7 +84,72 @@ def test_referral_qualifies_bonus_after_three_completed_referred_visits() -> Non
     assert bonuses[0].referral_count == 3
     assert bonuses[0].reward_label == REFERRAL_REWARD_LABEL
     assert progress.qualified_count == 3
+    assert progress.manual_credit_count == 0
+    assert progress.credited_count == 3
     assert progress.pending_bonus_count == 1
+
+
+def test_manual_referral_credit_counts_toward_bonus_once() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    with Session(engine, expire_on_commit=False) as session:
+        referrer = _create_client(session, telegram_id=100, display_name="Referrer")
+        code = ensure_referral_code(session, client_id=referrer.id)
+        credit = grant_manual_referral_credit(
+            session,
+            client_id=referrer.id,
+            amount=1,
+            reason="bug report credit",
+            dedupe_key="bug-report-2026-07-01",
+            created_by="admin",
+        )
+        duplicate = grant_manual_referral_credit(
+            session,
+            client_id=referrer.id,
+            amount=1,
+            reason="bug report credit",
+            dedupe_key="bug-report-2026-07-01",
+            created_by="admin",
+        )
+
+        for index in range(2):
+            referred = _create_client(
+                session,
+                telegram_id=200 + index,
+                display_name=f"Friend {index}",
+            )
+            register_referral_start(
+                session,
+                referral_code=code.code,
+                referred_client_id=referred.id,
+            )
+            booking = _create_booking(
+                session,
+                client=referred,
+                starts_at=datetime(2026, 6, 25 + index, 10, 0, tzinfo=UTC),
+            )
+            complete_booking(
+                session,
+                booking_id=booking.id,
+                final_amount=Decimal("90.00"),
+            )
+
+        session.commit()
+
+        manual_credits = session.scalars(select(ReferralManualCredit)).all()
+        bonuses = pending_referral_bonuses(session)
+        progress = referral_progress(session, client_id=referrer.id)
+
+    assert credit.created
+    assert not duplicate.created
+    assert len(manual_credits) == 1
+    assert progress.qualified_count == 2
+    assert progress.manual_credit_count == 1
+    assert progress.credited_count == 3
+    assert progress.pending_bonus_count == 1
+    assert len(bonuses) == 1
+    assert bonuses[0].referral_count == 3
 
 
 def test_referral_ignores_self_referral_and_existing_clients() -> None:
@@ -184,7 +251,8 @@ def test_admin_card_bonus_list_and_award_action() -> None:
         saved_bonus = session.get(ReferralBonus, bonus.id)
 
     assert "Рекомендации:" in card.text
-    assert "Засчитано: 3/3" in card.text
+    assert "Засчитано к бонусу: 3/3" in card.text
+    assert "Завершенные рекомендации: 3" in card.text
     assert "Бонусов к выдаче: 1" in card.text
     assert "Бонусы к выдаче" in bonuses.text
     assert "профессиональная косметика" in bonuses.text

@@ -21,6 +21,7 @@ from app.db.models import (
     Referral,
     ReferralBonus,
     ReferralCode,
+    ReferralManualCredit,
     ReminderLog,
     Slot,
     User,
@@ -38,6 +39,7 @@ EXPECTED_TABLES = {
     "referral_codes",
     "referrals",
     "referral_bonuses",
+    "referral_manual_credits",
 }
 
 
@@ -115,6 +117,13 @@ def test_models_create_minimal_booking_graph() -> None:
                 reward_label="test reward",
             )
         )
+        client.referral_manual_credits.append(
+            ReferralManualCredit(
+                amount=1,
+                reason="synthetic test credit",
+                dedupe_key="synthetic-credit",
+            )
+        )
 
         session.add(booking)
         session.add(referral)
@@ -133,6 +142,7 @@ def test_models_create_minimal_booking_graph() -> None:
     assert saved_booking.client.referral_code is not None
     assert len(saved_booking.client.sent_referrals) == 1
     assert len(saved_booking.client.referral_bonuses) == 1
+    assert len(saved_booking.client.referral_manual_credits) == 1
 
 
 def test_booking_status_enum_matches_architecture() -> None:

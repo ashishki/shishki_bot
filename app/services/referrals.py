@@ -19,6 +19,7 @@ from app.db.models import (
     ReferralBonus,
     ReferralBonusStatus,
     ReferralCode,
+    ReferralManualCredit,
     ReferralStatus,
 )
 
@@ -44,10 +45,19 @@ class ReferralRegistrationResult:
 class ReferralProgress:
     code: str | None
     qualified_count: int
+    manual_credit_count: int
+    credited_count: int
     pending_count: int
     pending_bonus_count: int
     awarded_bonus_count: int
     next_bonus_remaining: int
+
+
+@dataclass(frozen=True, slots=True)
+class ReferralManualCreditResult:
+    credit: ReferralManualCredit
+    created: bool
+    bonuses: tuple[ReferralBonus, ...]
 
 
 def ensure_referral_code(session: Session, *, client_id: int) -> ReferralCode:
@@ -188,8 +198,82 @@ def qualify_referral_for_booking(
     return _ensure_earned_bonuses(session, client_id=referral.referrer_client_id)
 
 
+def grant_manual_referral_credit(
+    session: Session,
+    *,
+    client_id: int,
+    reason: str,
+    amount: int = 1,
+    dedupe_key: str | None = None,
+    created_by: str | None = None,
+) -> ReferralManualCreditResult:
+    if amount <= 0:
+        raise ReferralServiceError("Manual referral credit amount must be positive")
+    if not reason.strip():
+        raise ReferralServiceError("Manual referral credit reason is required")
+
+    client = session.get(Client, client_id)
+    if client is None:
+        raise ReferralServiceError(f"Client not found: {client_id}")
+
+    if dedupe_key:
+        existing = session.scalar(
+            select(ReferralManualCredit).where(
+                ReferralManualCredit.dedupe_key == dedupe_key
+            )
+        )
+        if existing is not None:
+            if existing.client_id != client_id:
+                raise ReferralServiceError(
+                    "Manual referral credit key belongs to another client"
+                )
+            bonuses = _ensure_earned_bonuses(session, client_id=client_id)
+            return ReferralManualCreditResult(
+                credit=existing,
+                created=False,
+                bonuses=bonuses,
+            )
+
+    credit = ReferralManualCredit(
+        client_id=client_id,
+        amount=amount,
+        reason=reason.strip(),
+        dedupe_key=dedupe_key.strip() if dedupe_key else None,
+        created_by=created_by.strip() if created_by else None,
+    )
+    try:
+        with session.begin_nested():
+            session.add(credit)
+            session.flush()
+    except IntegrityError as exc:
+        if not dedupe_key:
+            raise
+        existing = session.scalar(
+            select(ReferralManualCredit).where(
+                ReferralManualCredit.dedupe_key == dedupe_key
+            )
+        )
+        if existing is None:
+            raise
+        if existing.client_id != client_id:
+            raise ReferralServiceError(
+                "Manual referral credit key belongs to another client"
+            ) from exc
+        bonuses = _ensure_earned_bonuses(session, client_id=client_id)
+        return ReferralManualCreditResult(
+            credit=existing,
+            created=False,
+            bonuses=bonuses,
+        )
+
+    bonuses = _ensure_earned_bonuses(session, client_id=client_id)
+    return ReferralManualCreditResult(credit=credit, created=True, bonuses=bonuses)
+
+
 def referral_progress(session: Session, *, client_id: int) -> ReferralProgress:
     qualified_count = _qualified_referral_count(session, client_id=client_id)
+    manual_credit_count = _manual_referral_credit_count(session, client_id=client_id)
+    credited_count = qualified_count + manual_credit_count
     pending_count = len(
         tuple(
             session.scalars(
@@ -224,14 +308,16 @@ def referral_progress(session: Session, *, client_id: int) -> ReferralProgress:
         select(ReferralCode).where(ReferralCode.client_id == client_id)
     )
     next_bonus_remaining = REFERRAL_BONUS_THRESHOLD - (
-        qualified_count % REFERRAL_BONUS_THRESHOLD
+        credited_count % REFERRAL_BONUS_THRESHOLD
     )
-    if next_bonus_remaining == REFERRAL_BONUS_THRESHOLD and qualified_count:
+    if next_bonus_remaining == REFERRAL_BONUS_THRESHOLD and credited_count:
         next_bonus_remaining = REFERRAL_BONUS_THRESHOLD
 
     return ReferralProgress(
         code=code.code if code else None,
         qualified_count=qualified_count,
+        manual_credit_count=manual_credit_count,
+        credited_count=credited_count,
         pending_count=pending_count,
         pending_bonus_count=pending_bonus_count,
         awarded_bonus_count=awarded_bonus_count,
@@ -293,7 +379,7 @@ def referral_bonus_admin_message(bonus: ReferralBonus) -> str:
             "Бонус за рекомендации",
             "",
             f"Клиент: {_html(_display_name(bonus.client))} #{bonus.client_id}",
-            f"Засчитано рекомендаций: {bonus.referral_count}",
+            f"Засчитано к бонусу: {bonus.referral_count}",
             f"Подарок: {bonus.reward_label}",
             "",
             "Откройте /admin -> Бонусы, чтобы отметить выдачу.",
@@ -306,10 +392,10 @@ def _ensure_earned_bonuses(
     *,
     client_id: int,
 ) -> tuple[ReferralBonus, ...]:
-    qualified_count = _qualified_referral_count(session, client_id=client_id)
+    credited_count = _credited_referral_count(session, client_id=client_id)
     earned_counts = range(
         REFERRAL_BONUS_THRESHOLD,
-        qualified_count + 1,
+        credited_count + 1,
         REFERRAL_BONUS_THRESHOLD,
     )
     created: list[ReferralBonus] = []
@@ -345,6 +431,24 @@ def _qualified_referral_count(session: Session, *, client_id: int) -> int:
             )
         )
     )
+
+
+def _manual_referral_credit_count(session: Session, *, client_id: int) -> int:
+    return sum(
+        credit.amount
+        for credit in session.scalars(
+            select(ReferralManualCredit).where(
+                ReferralManualCredit.client_id == client_id
+            )
+        )
+    )
+
+
+def _credited_referral_count(session: Session, *, client_id: int) -> int:
+    return _qualified_referral_count(
+        session,
+        client_id=client_id,
+    ) + _manual_referral_credit_count(session, client_id=client_id)
 
 
 def _client_has_bookings(session: Session, *, client_id: int) -> bool:

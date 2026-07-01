@@ -394,3 +394,13 @@ Status: append-only
 - Evidence collected: targeted reminder scheduler test; ruff check; ruff format --check; full pytest passed with 91 tests; integrity check; skill security gate.
 - Follow-ups: Watch the next live reminder text for selected appointment time matching the client-visible slot.
 - Notes: No runtime code change was needed; reminder message formatting already uses business timezone for naive stored appointment times.
+
+### 2026-07-01 - T27 - Manual Referral Credits And Client Thanks
+
+- Scope: `app/db/models.py`, `app/services/referrals.py`, `app/services/notifications.py`, client/admin referral text, referral/notification/model tests, and operator docs.
+- Why: The approved bug-report thank-you needed to count as 1 bonus-credit for the client without faking a completed referred client or losing admin visibility.
+- Decisions applied: `D-002`, `D-004`
+- Evidence collected: targeted referral/notification/model tests; ruff check; ruff format --check; full pytest passed with 92 tests; integrity check; skill security gate.
+- Data operation: stopped `shishki-bot.service`, backed up `shishki_bot.db` to `<private-backup-path>`, applied additive `referral_manual_credits` schema creation, credited client `<redacted>` with dedupe key `<redacted-dedupe-key>`, sent the thanks/referral-link message, logged notification `<redacted>`, and restarted the service.
+- Follow-ups: Confirm the client sees the thanks/referral-link message in Telegram and that the admin client card shows `Засчитано к бонусу: 1/3` with `Ручные начисления: 1`.
+- Notes: Manual credits are counted toward bonus thresholds, but real qualified referrals remain visible separately in admin cards.

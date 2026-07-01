@@ -22,7 +22,7 @@ from app.db.models import (
     Slot,
     User,
 )
-from app.services.notifications import send_client_notification
+from app.services.notifications import send_client_message, send_client_notification
 
 
 class FakeSender:
@@ -193,6 +193,34 @@ def test_notification_without_telegram_identity_is_logged_failed() -> None:
     assert log.status is DeliveryStatus.FAILED
     assert log.recipient_telegram_id is None
     assert log.error == "Client has no Telegram identity"
+
+
+def test_direct_client_message_is_logged_without_booking() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    with Session(engine, expire_on_commit=False) as session:
+        client = Client(
+            user=User(telegram_id=123, username="test_user"),
+            display_name="Test User",
+        )
+        session.add(client)
+        session.flush()
+        sender = FakeSender()
+
+        log = send_client_message(
+            session,
+            sender=sender,
+            client=client,
+            kind="referral_manual_credit_thanks",
+            text="Спасибо за помощь",
+        )
+        session.commit()
+
+    assert sender.sent_messages == [(123, "Спасибо за помощь")]
+    assert log.booking_id is None
+    assert log.client_id == client.id
+    assert log.status is DeliveryStatus.SENT
 
 
 def _booking(*, starts_at: datetime | None = None) -> Booking:

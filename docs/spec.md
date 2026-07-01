@@ -160,7 +160,8 @@ Out of scope for v1: high availability and multi-region deployment.
 
 Description: Clients can share a personal Telegram deep link. The bot records
 new clients who first enter through that link and qualifies the referral after
-the referred client's appointment is completed.
+the referred client's appointment is completed. Admin-approved manual credits
+can also count toward bonus progress without creating fake referred clients.
 
 Acceptance criteria:
 
@@ -168,10 +169,11 @@ Acceptance criteria:
 2. `/start ref_<code>` records the referrer for a new client before booking.
 3. Self-referrals and clients with existing bookings are ignored.
 4. A referral becomes qualified only after a completed booking.
-5. Every 3 qualified referrals creates an admin-visible pending bonus.
+5. Every 3 credited units, from qualified referrals plus approved manual
+   credits, creates an admin-visible pending bonus.
 6. Admin receives a one-time reminder for a newly earned bonus.
 7. Client cards show referral code/progress, pending referred clients, pending
-   bonuses, and awarded bonuses.
+   bonuses, manual credits, and awarded bonuses.
 
 Reward positioning: professional hair cosmetics, either care or styling,
 instead of a haircut discount.

@@ -121,7 +121,8 @@ The current runtime starts aiogram polling. Deployment and operator notes live i
 - `app/bot/handlers/` - Telegram handler modules for admin and client flows.
 - `app/bot/keyboards.py` - reusable bot menu and callback payload definitions.
 - `app/db/models.py` - SQLAlchemy models for users, clients, slots, bookings,
-  status history, notifications, reminders, expenses, referrals, and bonuses.
+  status history, notifications, reminders, expenses, referrals, manual credits,
+  and bonuses.
 - `app/db/session.py` - async engine/session helpers.
 - `app/scheduler.py` - reminder recovery, runtime delivery, and referral-bonus
   admin reminder scheduler.

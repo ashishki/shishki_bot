@@ -982,3 +982,59 @@ Files:
 Context-Refs:
   - docs/spec.md#feature-5---reminders-and-notifications
   - docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity
+
+## T27: Manual Referral Credits And Client Thanks
+
+Owner:      codex
+Phase:      5
+Type:       feature
+Depends-On: T26
+Status:     [x] complete
+Completed:  2026-07-01
+
+Objective: |
+  Add audited manual referral credits so approved goodwill cases can count
+  toward the professional-cosmetics referral bonus without creating fake
+  referred clients, then credit and notify the client who reported the local
+  time bug.
+
+Acceptance-Criteria:
+  - id: AC-1
+    description: "Manual referral credits are stored separately, deduplicated by key, and counted toward earned referral bonuses."
+    test: "tests/test_referrals.py::test_manual_referral_credit_counts_toward_bonus_once"
+  - id: AC-2
+    description: "Client and admin referral progress show total credited progress, while admin cards keep real qualified referrals and manual credits separate."
+    test: "tests/test_referrals.py::test_admin_card_bonus_list_and_award_action"
+  - id: AC-3
+    description: "A direct client message can be delivered and logged without a booking ID."
+    test: "tests/test_notifications.py::test_direct_client_message_is_logged_without_booking"
+
+Migration-Note: |
+  Additive production migration: create the new `referral_manual_credits` table
+  after a fresh database backup. Rollback is application rollback plus dropping
+  `referral_manual_credits` only if the operator accepts losing manual
+  bonus-credit history.
+
+Files:
+  - app/db/models.py
+  - app/services/referrals.py
+  - app/services/notifications.py
+  - app/bot/handlers/client.py
+  - app/bot/handlers/admin.py
+  - tests/test_referrals.py
+  - tests/test_notifications.py
+  - tests/test_models.py
+  - README.md
+  - docs/ARCHITECTURE.md
+  - docs/spec.md
+  - docs/ADMIN_GUIDE.md
+  - docs/DEPLOYMENT.md
+  - docs/CODEX_PROMPT.md
+  - docs/tasks.md
+  - docs/IMPLEMENTATION_JOURNAL.md
+  - docs/EVIDENCE_INDEX.md
+
+Context-Refs:
+  - docs/spec.md#feature-9---referral-program
+  - docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity
+  - docs/IMPLEMENTATION_CONTRACT.md#control-surface-and-runtime-boundaries

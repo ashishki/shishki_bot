@@ -352,21 +352,27 @@ def handle_referral_program_request(
     progress = referral_progress(session, client_id=client.id)
     link = build_referral_link(bot_username=bot_username, code=code.code)
 
+    lines = [
+        "Ваша ссылка для рекомендаций:",
+        link,
+        "",
+        f"За {REFERRAL_BONUS_THRESHOLD} новых клиентов, которые пришли "
+        "по вашей ссылке и дошли до визита, я подарю вам "
+        "классную профессиональную косметику для волос: уход или стайлинг.",
+        "",
+        f"Засчитано: {progress.credited_count} из {REFERRAL_BONUS_THRESHOLD}",
+    ]
+    if progress.manual_credit_count:
+        lines.append(f"Дополнительно засчитано вручную: {progress.manual_credit_count}")
+    lines.extend(
+        [
+            f"Ожидают визита: {progress.pending_count}",
+            f"Бонусов к выдаче: {progress.pending_bonus_count}",
+        ]
+    )
+
     return ClientTextResponse(
-        text="\n".join(
-            [
-                "Ваша ссылка для рекомендаций:",
-                link,
-                "",
-                f"За {REFERRAL_BONUS_THRESHOLD} новых клиентов, которые пришли "
-                "по вашей ссылке и дошли до визита, я подарю вам "
-                "классную профессиональную косметику для волос: уход или стайлинг.",
-                "",
-                f"Засчитано: {progress.qualified_count} из {REFERRAL_BONUS_THRESHOLD}",
-                f"Ожидают визита: {progress.pending_count}",
-                f"Бонусов к выдаче: {progress.pending_bonus_count}",
-            ]
-        ),
+        text="\n".join(lines),
         buttons=(
             _my_booking_button(),
             _dates_button(label="Стрижка"),

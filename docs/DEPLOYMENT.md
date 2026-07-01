@@ -145,6 +145,13 @@ missing tables. Rollback is application rollback plus dropping these new tables
 only if the operator explicitly decides referral data created after the rollout
 can be discarded.
 
+For T27 manual referral credits, the schema change is additive:
+`referral_manual_credits` is a new table. On an existing database, make a fresh
+backup first, then run the same `create_all` helper to create only the missing
+table. Rollback is application rollback plus dropping `referral_manual_credits`
+only if the operator explicitly decides manual bonus-credit history can be
+discarded.
+
 ## Backup Plan
 
 Production must have a backup path before real client use.
