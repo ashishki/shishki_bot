@@ -385,3 +385,12 @@ Status: append-only
 - Evidence collected: targeted client confirmation regression test; booking/admin targeted tests; ruff check; ruff format --check; full pytest passed with 90 tests; integrity check; skill security gate.
 - Follow-ups: Smoke-test a client booking in Telegram: selected slot 10:00 should confirm as 10:00.
 - Notes: No data migration. Persisted SQLite datetimes remain naive; booking creation/reschedule now preserves naive slot time for booking fields and uses UTC conversion only for comparisons.
+
+### 2026-07-01 - T26 - Reminder Local Time Regression Coverage
+
+- Scope: `tests/test_reminders.py` and handoff docs.
+- Why: After fixing booking confirmation time shifts, reminder delivery needed explicit proof that local naive appointment times are also sent without timezone shift.
+- Decisions applied: `D-002`, `D-004`
+- Evidence collected: targeted reminder scheduler test; ruff check; ruff format --check; full pytest passed with 91 tests; integrity check; skill security gate.
+- Follow-ups: Watch the next live reminder text for selected appointment time matching the client-visible slot.
+- Notes: No runtime code change was needed; reminder message formatting already uses business timezone for naive stored appointment times.

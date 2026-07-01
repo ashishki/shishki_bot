@@ -182,6 +182,8 @@ def test_scheduler_job_sends_naive_local_due_reminders() -> None:
     assert len(attempted) == 1
     assert sender.messages[0][0] == 123
     assert "Напоминание: запись завтра" in sender.messages[0][1]
+    assert "\n13:00\n" in sender.messages[0][1]
+    assert "\n17:00\n" not in sender.messages[0][1]
     assert {log.booking_id for log in logs} == {booking_id}
     assert [log.scheduled_for for log in logs] == [
         datetime(2026, 6, 26, 13, 0),
