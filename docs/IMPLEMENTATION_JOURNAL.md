@@ -1,7 +1,7 @@
 # Implementation Journal - shishki_bot
 
 Version: 1.0
-Last updated: 2026-06-30
+Last updated: 2026-07-01
 Status: append-only
 
 ## Entry Template
@@ -376,3 +376,12 @@ Status: append-only
 - Evidence collected: targeted admin working-time button-flow test; ruff check; ruff format --check; full pytest passed with 89 tests; integrity check; skill security gate.
 - Follow-ups: Smoke-test `/admin` -> `Рабочее время` -> date -> open day -> confirmation, then close one test hour from Telegram.
 - Notes: No schema migration. Button actions reuse the same server-side schedule mutation handlers as the command shortcuts, so booking-overlap and active-booking protections remain in one place.
+
+### 2026-07-01 - T25 - Local Slot Time Confirmation Fix
+
+- Scope: `app/services/booking.py`, `tests/test_client_handlers.py`, and handoff docs.
+- Why: Client confirmation messages for local naive slots could show a timezone-shifted time because booking creation treated the slot time as UTC in memory.
+- Decisions applied: `D-002`, `D-004`
+- Evidence collected: targeted client confirmation regression test; booking/admin targeted tests; ruff check; ruff format --check; full pytest passed with 90 tests; integrity check; skill security gate.
+- Follow-ups: Smoke-test a client booking in Telegram: selected slot 10:00 should confirm as 10:00.
+- Notes: No data migration. Persisted SQLite datetimes remain naive; booking creation/reschedule now preserves naive slot time for booking fields and uses UTC conversion only for comparisons.

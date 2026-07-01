@@ -1,17 +1,17 @@
 # CODEX_PROMPT.md
 
 Version: 1.1
-Date: 2026-06-30
+Date: 2026-07-01
 Mode: Standard
 Phase: 5
 
 ## Current State
 
 - Phase: 5
-- Baseline: T24 complete; task graph complete with 89 total tests.
+- Baseline: T25 complete; task graph complete with 90 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-06-30 - ruff check, ruff format --check, pytest `tests -q` (89 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-07-01 - ruff check, ruff format --check, pytest `tests -q` (90 passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,7 +29,7 @@ Phase: 5
 
 ## Next Task
 
-none - implementation task graph complete through T24.
+none - implementation task graph complete through T25.
 
 For future changes, read:
 
@@ -188,6 +188,9 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
 - 2026-06-30 - T24 Button-Driven Working Time Admin UX: changed `Рабочее время`
   from command-only help into a date/preset/hour/confirmation button flow while
   keeping `/open`, `/open_day`, `/close`, and `/close_day` as fast shortcuts.
+- 2026-07-01 - T25 Local Slot Time Confirmation Fix: fixed booking creation
+  and reschedule paths so naive SQLite slot times remain business-local in
+  immediate client/admin messages instead of being treated as UTC.
 
 ## Completed Bootstrap Work
 
@@ -230,6 +233,10 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   with `/close_day <YYYY-MM-DD> <HH:MM>`. The `Рабочее время` admin button now
   provides date selection, presets, per-hour actions, and confirmation before
   applying those same mutations.
+- Booking creation and reschedule preserve naive SQLite slot times as local
+  business times for stored booking fields and immediate confirmation/change
+  messages. UTC conversion is used only for comparisons such as past-slot
+  checks.
 - `/admin` opens the admin dashboard: upcoming bookings with client links,
   client counts, free slots, weekly revenue, pending bonuses, and quick controls
   for records, clients, metrics, manual booking, working time, today, and
