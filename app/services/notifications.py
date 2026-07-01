@@ -7,7 +7,7 @@ from typing import Protocol
 
 from sqlalchemy.orm import Session
 
-from app.db.models import Booking, DeliveryStatus, NotificationLog
+from app.db.models import Booking, Client, DeliveryStatus, NotificationLog
 
 
 class NotificationSender(Protocol):
@@ -23,10 +23,29 @@ def send_client_notification(
     kind: str,
     text: str,
 ) -> NotificationLog:
-    recipient_telegram_id = _recipient_telegram_id(booking)
+    return send_client_message(
+        session,
+        sender=sender,
+        client=booking.client,
+        kind=kind,
+        text=text,
+        booking=booking,
+    )
+
+
+def send_client_message(
+    session: Session,
+    *,
+    sender: NotificationSender,
+    client: Client,
+    kind: str,
+    text: str,
+    booking: Booking | None = None,
+) -> NotificationLog:
+    recipient_telegram_id = _client_telegram_id(client)
     log = NotificationLog(
         booking=booking,
-        client=booking.client,
+        client=client,
         kind=kind,
         recipient_telegram_id=recipient_telegram_id,
         status=DeliveryStatus.PENDING,
@@ -52,6 +71,6 @@ def send_client_notification(
     return log
 
 
-def _recipient_telegram_id(booking: Booking) -> int | None:
-    user = booking.client.user if booking.client else None
+def _client_telegram_id(client: Client | None) -> int | None:
+    user = client.user if client else None
     return user.telegram_id if user else None

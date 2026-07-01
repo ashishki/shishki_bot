@@ -891,7 +891,12 @@ def handle_admin_client_card_view(
         lines.append(f"Код: {_html(progress.code)}")
     else:
         lines.append("Код: клиент еще не запрашивал ссылку")
-    lines.append(f"Засчитано: {progress.qualified_count}/{REFERRAL_BONUS_THRESHOLD}")
+    lines.append(
+        f"Засчитано к бонусу: {progress.credited_count}/{REFERRAL_BONUS_THRESHOLD}"
+    )
+    lines.append(f"Завершенные рекомендации: {progress.qualified_count}")
+    if progress.manual_credit_count:
+        lines.append(f"Ручные начисления: {progress.manual_credit_count}")
     lines.append(f"Ожидают визита: {progress.pending_count}")
     lines.append(f"Бонусов к выдаче: {progress.pending_bonus_count}")
     lines.append(f"Бонусов выдано: {progress.awarded_bonus_count}")
@@ -949,7 +954,7 @@ def handle_admin_referral_bonuses(
                 "",
                 f"#{bonus.id} {_html(_client_display_name(client))}",
                 f"Клиент ID: {client.id}",
-                f"Засчитано рекомендаций: {bonus.referral_count}",
+                f"Засчитано к бонусу: {bonus.referral_count}",
                 f"Подарок: {_html(bonus.reward_label)}",
             ]
         )

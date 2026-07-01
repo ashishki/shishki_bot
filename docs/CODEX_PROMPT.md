@@ -8,10 +8,10 @@ Phase: 5
 ## Current State
 
 - Phase: 5
-- Baseline: T26 complete; task graph complete with 91 total tests.
+- Baseline: T27 complete; task graph complete with 92 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-07-01 - ruff check, ruff format --check, pytest `tests -q` (91 passed), integrity check, and skill security gate passed.
+- Last verification: 2026-07-01 - ruff check, ruff format --check, pytest `tests -q` (92 tests passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,7 +29,7 @@ Phase: 5
 
 ## Next Task
 
-none - implementation task graph complete through T26.
+none - implementation task graph complete through T27.
 
 For future changes, read:
 
@@ -194,6 +194,11 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
 - 2026-07-01 - T26 Reminder Local Time Regression Coverage: added scheduler
   reminder coverage proving local naive appointment time is sent without UTC
   shift in reminder messages.
+- 2026-07-01 - T27 Manual Referral Credits And Client Thanks: added audited,
+  deduplicated manual referral credits, included them in bonus-progress and
+  pending-bonus calculations, showed separate real/manual counts in admin
+  client cards, added direct client-message notification logging, and credited
+  the approved bug-report case after a live database backup.
 
 ## Completed Bootstrap Work
 

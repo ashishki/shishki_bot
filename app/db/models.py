@@ -127,6 +127,10 @@ class Client(Base):
         back_populates="client",
         cascade="all, delete-orphan",
     )
+    referral_manual_credits: Mapped[list[ReferralManualCredit]] = relationship(
+        back_populates="client",
+        cascade="all, delete-orphan",
+    )
 
 
 class Slot(Base):
@@ -363,3 +367,19 @@ class ReferralBonus(Base):
     )
 
     client: Mapped[Client] = relationship(back_populates="referral_bonuses")
+
+
+class ReferralManualCredit(Base):
+    __tablename__ = "referral_manual_credits"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"), nullable=False)
+    amount: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    reason: Mapped[str] = mapped_column(String(255), nullable=False)
+    dedupe_key: Mapped[str | None] = mapped_column(String(255), unique=True)
+    created_by: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+
+    client: Mapped[Client] = relationship(back_populates="referral_manual_credits")
