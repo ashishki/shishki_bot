@@ -1,17 +1,17 @@
 # CODEX_PROMPT.md
 
 Version: 1.1
-Date: 2026-07-01
+Date: 2026-07-06
 Mode: Standard
 Phase: 5
 
 ## Current State
 
 - Phase: 5
-- Baseline: T27 complete; task graph complete with 92 total tests.
+- Baseline: T28 complete; task graph complete with 93 total tests.
 - Ruff: configured in `pyproject.toml` for `app/` and `tests/`.
 - CI: installs dev dependencies and runs ruff check, ruff format --check, pytest, integrity check, and skill security gate.
-- Last verification: 2026-07-01 - ruff check, ruff format --check, pytest `tests -q` (92 tests passed), integrity check, and skill security gate passed.
+- Last verification: 2026-07-06 - ruff check, ruff format --check, pytest `tests -q` (93 tests passed), integrity check, and skill security gate passed.
 - AI/model budget: not applicable for production v1; development model use is governed by `docs/COST_BUDGET.md`.
 - Production AI usage: none.
 - External skills: not applicable; none planned or installed.
@@ -29,7 +29,7 @@ Phase: 5
 
 ## Next Task
 
-none - implementation task graph complete through T27.
+none - implementation task graph complete through T28.
 
 For future changes, read:
 
@@ -199,6 +199,10 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   pending-bonus calculations, showed separate real/manual counts in admin
   client cards, added direct client-message notification logging, and credited
   the approved bug-report case after a live database backup.
+- 2026-07-06 - T28 Salon Entrance Confirmation And Admin Booking Wizard: added
+  the salon entrance photo/hint to booking confirmations, made admin-created
+  confirmations send as photo captions, and replaced the `Создать запись`
+  placeholder with a client/service/duration/date/time/confirm button wizard.
 
 ## Completed Bootstrap Work
 
@@ -235,6 +239,10 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   client card first, usually by pressing `/start`, `Окрашивание`, or
   `Консультация`. Admin schedule and notification views show the client name,
   ID, and chat link when available.
+- Admin manual bookings can also be created from `/admin` -> `Создать запись`
+  or a client card through guided buttons. Haircut wizard confirmations can
+  notify the client with the salon entrance photo; coloring/consultation wizard
+  bookings reserve time silently because price is individual.
 - Admin can create/reopen free time with `/open <YYYY-MM-DD> <HH:MM>` or
   `/open_day <YYYY-MM-DD> <HH:MM> <HH:MM>`, hide one free slot with
   `/close <YYYY-MM-DD> <HH:MM>`, or close the remaining free slots in a day

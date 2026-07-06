@@ -100,6 +100,7 @@ REFERRAL_LINK_UNAVAILABLE_TEXT = (
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ABOUT_MASTER_TEXT_PATH = PROJECT_ROOT / "about_me.md"
 ABOUT_MASTER_PHOTO_PATH = PROJECT_ROOT / "IMG_9385.PNG"
+SALON_ENTRANCE_PHOTO_PATH = PROJECT_ROOT / "IMG_9610.JPG"
 MAX_ACTIVE_HAIRCUT_BOOKINGS_PER_DAY = 2
 ADMIN_NEW_BOOKING_NOTIFICATION_KIND = "admin_new_booking"
 ADMIN_BOOKING_RESCHEDULED_NOTIFICATION_KIND = "admin_booking_rescheduled"
@@ -149,6 +150,7 @@ class SlotListResponse:
 class ClientTextResponse:
     text: str
     buttons: tuple[MenuButton, ...] = ()
+    photo_path: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,6 +158,7 @@ class ClientBookingResponse:
     text: str
     booking: Booking
     buttons: tuple[MenuButton, ...] = ()
+    photo_path: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -163,6 +166,7 @@ class ClientCallbackResponse:
     text: str
     slots: tuple[SlotOption, ...] = ()
     buttons: tuple[MenuButton, ...] = ()
+    photo_path: Path | None = None
     should_commit: bool = False
     admin_notification_booking_id: int | None = None
     admin_notification_kind: str | None = None
@@ -322,6 +326,7 @@ def handle_haircut_booking_confirmation(
             _dates_button(label="Еще одна стрижка"),
             _main_menu_button(),
         ),
+        photo_path=SALON_ENTRANCE_PHOTO_PATH,
     )
 
 
@@ -802,6 +807,7 @@ def handle_client_callback_payload(
         return ClientCallbackResponse(
             text=response.text,
             buttons=response.buttons,
+            photo_path=response.photo_path,
             should_commit=True,
             admin_notification_booking_id=response.booking.id,
             admin_notification_kind=ADMIN_NEW_BOOKING_NOTIFICATION_KIND,
@@ -871,6 +877,7 @@ def handle_active_booking_view(
         booking,
         timezone=settings.timezone_info,
         include_change_hint=False,
+        include_entrance_hint=False,
         **_settings_location_links(settings),
     ).replace("Запись подтверждена\n\n", "")
     return ClientTextResponse(
@@ -1024,6 +1031,7 @@ def handle_cancel_booking_prompt(
         + booking_confirmation_message(
             booking,
             timezone=settings.timezone_info,
+            include_entrance_hint=False,
             **_settings_location_links(settings),
         ),
         buttons=(
@@ -1355,11 +1363,19 @@ def build_client_router(
         response = await _dispatch_callback(callback)
         await callback.answer()
         if callback.message:
-            await callback.message.answer(
-                response.text,
-                reply_markup=_callback_keyboard(response),
-                parse_mode="HTML",
-            )
+            if response.photo_path is not None and response.photo_path.exists():
+                await callback.message.answer_photo(
+                    photo=FSInputFile(response.photo_path),
+                    caption=response.text,
+                    reply_markup=_callback_keyboard(response),
+                    parse_mode="HTML",
+                )
+            else:
+                await callback.message.answer(
+                    response.text,
+                    reply_markup=_callback_keyboard(response),
+                    parse_mode="HTML",
+                )
         if async_session_factory is not None:
             await notify_admins_about_booking_event(
                 async_session_factory,

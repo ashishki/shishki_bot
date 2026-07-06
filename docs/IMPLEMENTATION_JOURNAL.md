@@ -404,3 +404,13 @@ Status: append-only
 - Data operation: stopped `shishki-bot.service`, backed up `shishki_bot.db` to `/srv/openclaw-you/backups/shishki_bot/shishki_bot_before_t27_manual_referral_credit_20260701_163904.db`, applied additive `referral_manual_credits` schema creation, credited client `#10` with dedupe key `alexander-time-bug-2026-07-01`, sent the thanks/referral-link message, logged notification `#8`, and restarted the service.
 - Follow-ups: Confirm the client sees the thanks/referral-link message in Telegram and that the admin client card shows `Засчитано к бонусу: 1/3` with `Ручные начисления: 1`.
 - Notes: Manual credits are counted toward bonus thresholds, but real qualified referrals remain visible separately in admin cards.
+
+### 2026-07-06 - T28 - Salon Entrance Confirmation And Admin Booking Wizard
+
+- Scope: `IMG_9610.JPG`, `app/bot/messages.py`, `app/bot/handlers/client.py`, `app/bot/handlers/admin.py`, `app/bot/keyboards.py`, notification/client/admin tests, and operator/product docs.
+- Why: Confirmed clients need a visual entrance marker for the salon, and the admin `Создать запись` button needed a guided flow instead of a command-format help dead end.
+- Decisions applied: `D-002`, `D-003`, `D-004`
+- Evidence collected: targeted notification/client/admin tests; ruff check; ruff format --check; full pytest passed with 93 tests; integrity check; skill security gate.
+- Data operation: no schema or live data migration. Pulled `IMG_9610.JPG` from `origin/main`.
+- Follow-ups: Smoke-test a client self-booking and `/admin` -> `Создать запись` in Telegram; the client confirmation should arrive as the salon entrance photo with confirmation details in the caption.
+- Notes: The button wizard supports common service presets. Haircut bookings can notify the client; coloring/consultation wizard bookings reserve time silently because price is individual. `/book` remains the custom-price/custom-service shortcut.

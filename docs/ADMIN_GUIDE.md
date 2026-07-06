@@ -28,8 +28,7 @@ The code also provides tested service/admin wrapper behavior for:
 
 - Opening `/admin` as a dashboard with today/upcoming bookings, free slots,
   client counts, weekly revenue, and pending bonuses.
-- Creating manual complex bookings with custom service, duration, price, place,
-  and notes.
+- Creating manual bookings from guided buttons or the `/book` shortcut.
 - Rescheduling bookings and logging/sending client notifications.
 - Cancelling bookings and logging/sending client notifications.
 - Updating client-visible booking details with required notification logging.
@@ -49,9 +48,18 @@ self-booking.
 
 1. Ask the client to press `/start` in the bot at least once, or ask them to
    press `Окрашивание` / `Консультация`. This creates their client card.
-2. Open `/admin` -> `Клиенты` and copy either `ID клиента` or the Telegram
-   username from the card.
-3. Send an admin command:
+2. Open `/admin` -> `Создать запись`.
+3. Choose the client from the recent list, or open `Все клиенты` and choose a
+   client card.
+4. Choose service, duration, date, time, and confirm.
+
+For male/female haircuts the button flow can send the client a confirmation
+with the salon entrance photo and address/map links. For coloring and
+consultation the button flow reserves the time without an automatic client
+message because price and details are individual.
+
+The command shortcut remains available when you need a custom service, custom
+price, place, or notes:
 
 ```text
 /book <client_id|@username> <YYYY-MM-DD> <HH:MM> <minutes> <price> <service>
@@ -63,9 +71,9 @@ Example:
 /book @client 2026-06-28 15:00 180 250 Окрашивание
 ```
 
-The command creates a confirmed booking, sends/logs a confirmation to the
-client when the client has Telegram identity, and blocks all overlapping
-client-visible slots for the duration of that booking.
+The command creates a confirmed booking, sends/logs a confirmation with the
+salon entrance photo to the client when the client has Telegram identity, and
+blocks all overlapping client-visible slots for the duration of that booking.
 
 The username form works only for clients who already have a bot client card.
 Use numeric client ID when a Telegram username is missing or has changed.
