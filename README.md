@@ -16,6 +16,8 @@ bot for one stylist.
 
 - `docs/PROJECT_BRIEF.md` - product brief and constraints.
 - `docs/ARCHITECTURE.md` - architecture and mode decision.
+- `docs/DETERMINISTIC_CASE_STUDY.md` - why v1 should stay deterministic and
+  where future AI is blocked.
 - `docs/spec.md` - product behavior and acceptance criteria.
 - `docs/tasks.md` - implementation task graph.
 - `docs/CODEX_PROMPT.md` - current Codex handoff state.
