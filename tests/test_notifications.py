@@ -45,6 +45,7 @@ def test_confirmation_message_contains_required_fields() -> None:
     assert "24 июня, среда" in message
     assert "10:00" in message
     assert "Test studio" in message
+    assert "ADITI BEAUTY CENTRE" in message
     assert "60 мин" in message
     assert "100 GEL" in message
     assert "Если нужно изменить запись" in message

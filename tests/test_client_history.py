@@ -236,6 +236,7 @@ def test_admin_clients_list_and_card_view_include_contact_current_and_history() 
     assert "завершена" in card.text
     assert tuple(button.label for button in card.buttons) == (
         "Открыть чат",
+        "Создать запись",
         "Назад к клиентам",
         "Главная",
     )

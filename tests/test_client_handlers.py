@@ -224,6 +224,9 @@ def test_client_haircut_booking_flow() -> None:
     assert "Запись подтверждена" in confirmation.text
     assert "Мужская стрижка" in confirmation.text
     assert "100 GEL" in confirmation.text
+    assert "ADITI BEAUTY CENTRE" in confirmation.text
+    assert confirmation.photo_path is not None
+    assert confirmation.photo_path.name == "IMG_9610.JPG"
 
 
 def test_client_confirmation_uses_local_naive_slot_time() -> None:

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from html import escape
+from pathlib import Path
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,10 +41,14 @@ from app.db.models import (
 )
 from app.services.booking import (
     ACTIVE_BOOKING_STATUSES,
+    DEFAULT_HAIRCUT_DURATION_MINUTES,
+    HAIRCUT_FEMALE_SERVICE,
+    HAIRCUT_MALE_SERVICE,
     BookingServiceError,
     SlotUnavailableError,
     cancel_booking_by_admin,
     create_manual_booking,
+    haircut_price_for_service,
     haircut_service_label,
     list_available_slots,
     reschedule_booking,
@@ -88,6 +93,8 @@ MANUAL_BOOKING_HELP_TEXT = "\n".join(
         "ID и username видны в «Клиенты» -> карточка клиента.",
     ]
 )
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+SALON_ENTRANCE_PHOTO_PATH = PROJECT_ROOT / "IMG_9610.JPG"
 SLOT_SCHEDULE_HELP_TEXT = "\n".join(
     [
         "Рабочее время:",
@@ -127,6 +134,10 @@ WORKING_OPEN_DAY = "od"
 WORKING_CLOSE_DAY = "cd"
 WORKING_OPEN_SLOT = "os"
 WORKING_CLOSE_SLOT = "cs"
+MANUAL_BOOKING_NOTIFY = "n"
+MANUAL_BOOKING_SILENT = "s"
+MANUAL_BOOKING_DATE_DAYS_TO_SHOW = 21
+MANUAL_BOOKING_RECENT_CLIENT_LIMIT = 8
 
 
 class AdminAccessDenied(PermissionError):
@@ -182,6 +193,7 @@ class AdminNotificationAttempt:
     recipient_telegram_id: int | None
     kind: str
     text: str
+    photo_path: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,6 +203,61 @@ class ManualBookingCommand:
     duration_minutes: int
     price_amount: Decimal
     service: str
+
+
+@dataclass(frozen=True, slots=True)
+class ManualBookingServicePreset:
+    code: str
+    service: str
+    label: str
+    price_amount: Decimal
+    duration_presets: tuple[int, ...]
+    can_notify_client: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ManualBookingDraft:
+    client_id: int
+    service_code: str
+    duration_minutes: int
+    slot_id: int | None = None
+    notify_client: bool = False
+
+
+MANUAL_BOOKING_SERVICE_PRESETS = (
+    ManualBookingServicePreset(
+        code="hm",
+        service=HAIRCUT_MALE_SERVICE,
+        label="Мужская стрижка",
+        price_amount=haircut_price_for_service(HAIRCUT_MALE_SERVICE),
+        duration_presets=(DEFAULT_HAIRCUT_DURATION_MINUTES, 90, 120),
+        can_notify_client=True,
+    ),
+    ManualBookingServicePreset(
+        code="hf",
+        service=HAIRCUT_FEMALE_SERVICE,
+        label="Женская стрижка",
+        price_amount=haircut_price_for_service(HAIRCUT_FEMALE_SERVICE),
+        duration_presets=(DEFAULT_HAIRCUT_DURATION_MINUTES, 90, 120),
+        can_notify_client=True,
+    ),
+    ManualBookingServicePreset(
+        code="col",
+        service="Окрашивание",
+        label="Окрашивание",
+        price_amount=Decimal("0.00"),
+        duration_presets=(120, 180, 240, 300),
+        can_notify_client=False,
+    ),
+    ManualBookingServicePreset(
+        code="cons",
+        service="Консультация",
+        label="Консультация",
+        price_amount=Decimal("0.00"),
+        duration_presets=(60, 90, 120),
+        can_notify_client=False,
+    ),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -443,6 +510,469 @@ def handle_admin_manual_booking_command(
         recipient_telegram_id=_recipient_telegram_id(booking),
         kind="booking_confirmation",
         text=text,
+        photo_path=SALON_ENTRANCE_PHOTO_PATH,
+    )
+
+
+def handle_admin_manual_booking_start(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    clients = tuple(
+        session.scalars(
+            select(Client)
+            .join(User, isouter=True)
+            .order_by(Client.id.desc())
+            .limit(MANUAL_BOOKING_RECENT_CLIENT_LIMIT)
+        )
+    )
+    lines = [
+        "Создать запись",
+        "",
+        "Выберите клиента из последних или откройте весь список.",
+        "Если клиента нет в базе, попросите его нажать /start.",
+        "",
+        "Быстрый формат тоже работает:",
+        "/book @username YYYY-MM-DD HH:MM минуты цена услуга",
+    ]
+    buttons = tuple(_manual_booking_client_button(client) for client in clients)
+    return AdminRuntimeResponse(
+        text="\n".join(lines),
+        buttons=buttons
+        + (
+            AdminRuntimeButton(
+                label="Все клиенты",
+                callback_data=admin_callback_data(AdminMenuAction.CLIENTS),
+            ),
+            _admin_menu_button(),
+        ),
+    )
+
+
+def handle_admin_manual_booking_client_choice(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    client_id: int,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    client = session.get(Client, client_id)
+    if client is None:
+        return AdminRuntimeResponse(
+            text=CLIENT_NOT_FOUND_TEXT,
+            buttons=(
+                AdminRuntimeButton(
+                    label="Выбрать клиента",
+                    callback_data=admin_callback_data(AdminMenuAction.MANUAL_BOOKING),
+                ),
+                _admin_menu_button(),
+            ),
+        )
+
+    return AdminRuntimeResponse(
+        text="\n".join(
+            [
+                "Создать запись",
+                "",
+                f"Клиент: {_html(_client_display_name(client))} #{client.id}",
+                "Выберите услугу.",
+            ]
+        ),
+        buttons=tuple(
+            AdminRuntimeButton(
+                label=preset.label,
+                callback_data=admin_callback_data(
+                    AdminMenuAction.MANUAL_BOOKING_SERVICE,
+                    _manual_booking_service_value(client.id, preset.code),
+                ),
+            )
+            for preset in MANUAL_BOOKING_SERVICE_PRESETS
+        )
+        + (
+            AdminRuntimeButton(
+                label="Другой клиент",
+                callback_data=admin_callback_data(AdminMenuAction.MANUAL_BOOKING),
+            ),
+            _admin_menu_button(),
+        ),
+    )
+
+
+def handle_admin_manual_booking_duration_choice(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    client_id: int,
+    service_code: str,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    client = session.get(Client, client_id)
+    if client is None:
+        return AdminRuntimeResponse(text=CLIENT_NOT_FOUND_TEXT)
+    preset = _manual_booking_service_preset(service_code)
+    return AdminRuntimeResponse(
+        text="\n".join(
+            [
+                "Создать запись",
+                "",
+                f"Клиент: {_html(_client_display_name(client))} #{client.id}",
+                f"Услуга: {_html(preset.label)}",
+                "Выберите длительность.",
+            ]
+        ),
+        buttons=tuple(
+            AdminRuntimeButton(
+                label=f"{duration} мин",
+                callback_data=admin_callback_data(
+                    AdminMenuAction.MANUAL_BOOKING_DURATION,
+                    _manual_booking_duration_value(
+                        client.id,
+                        preset.code,
+                        duration,
+                    ),
+                ),
+            )
+            for duration in preset.duration_presets
+        )
+        + (
+            AdminRuntimeButton(
+                label="Назад к услугам",
+                callback_data=admin_callback_data(
+                    AdminMenuAction.MANUAL_BOOKING_CLIENT,
+                    client.id,
+                ),
+            ),
+            _admin_menu_button(),
+        ),
+    )
+
+
+def handle_admin_manual_booking_date_choice(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    client_id: int,
+    service_code: str,
+    duration_minutes: int,
+    now: datetime | None = None,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    client = session.get(Client, client_id)
+    if client is None:
+        return AdminRuntimeResponse(text=CLIENT_NOT_FOUND_TEXT)
+    preset = _manual_booking_service_preset(service_code)
+    date_options = _manual_booking_date_options(
+        session,
+        settings,
+        duration_minutes=duration_minutes,
+        now=now,
+    )
+    if not date_options:
+        return AdminRuntimeResponse(
+            text="\n".join(
+                [
+                    "Нет свободных окон под выбранную длительность.",
+                    "",
+                    f"Услуга: {_html(preset.label)}",
+                    f"Длительность: {duration_minutes} мин",
+                    "",
+                    "Откройте рабочее время или выберите другую длительность.",
+                ]
+            ),
+            buttons=(
+                AdminRuntimeButton(
+                    label="Другая длительность",
+                    callback_data=admin_callback_data(
+                        AdminMenuAction.MANUAL_BOOKING_SERVICE,
+                        _manual_booking_service_value(client.id, preset.code),
+                    ),
+                ),
+                AdminRuntimeButton(
+                    label="Рабочее время",
+                    callback_data=admin_callback_data(AdminMenuAction.CLOSE_SLOTS),
+                ),
+                _admin_menu_button(),
+            ),
+        )
+
+    return AdminRuntimeResponse(
+        text="\n".join(
+            [
+                "Создать запись",
+                "",
+                f"Клиент: {_html(_client_display_name(client))} #{client.id}",
+                f"Услуга: {_html(preset.label)}",
+                f"Длительность: {duration_minutes} мин",
+                "Выберите дату.",
+            ]
+        ),
+        buttons=tuple(
+            AdminRuntimeButton(
+                label=f"{_format_date_label(selected_date)} · {count}",
+                callback_data=admin_callback_data(
+                    AdminMenuAction.MANUAL_BOOKING_DATE,
+                    _manual_booking_date_value(
+                        client.id,
+                        preset.code,
+                        duration_minutes,
+                        selected_date,
+                    ),
+                ),
+            )
+            for selected_date, count in date_options
+        )
+        + (
+            AdminRuntimeButton(
+                label="Другая длительность",
+                callback_data=admin_callback_data(
+                    AdminMenuAction.MANUAL_BOOKING_SERVICE,
+                    _manual_booking_service_value(client.id, preset.code),
+                ),
+            ),
+            _admin_menu_button(),
+        ),
+    )
+
+
+def handle_admin_manual_booking_slot_choice(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    client_id: int,
+    service_code: str,
+    duration_minutes: int,
+    selected_date: date,
+    now: datetime | None = None,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    client = session.get(Client, client_id)
+    if client is None:
+        return AdminRuntimeResponse(text=CLIENT_NOT_FOUND_TEXT)
+    preset = _manual_booking_service_preset(service_code)
+    slots = _manual_booking_available_start_slots(
+        session,
+        settings,
+        selected_date=selected_date,
+        duration_minutes=duration_minutes,
+        now=now,
+    )
+    if not slots:
+        return AdminRuntimeResponse(
+            text="На эту дату уже нет подходящих окон. Выберите другую дату.",
+            buttons=(
+                AdminRuntimeButton(
+                    label="К датам",
+                    callback_data=admin_callback_data(
+                        AdminMenuAction.MANUAL_BOOKING_DURATION,
+                        _manual_booking_duration_value(
+                            client.id,
+                            preset.code,
+                            duration_minutes,
+                        ),
+                    ),
+                ),
+                _admin_menu_button(),
+            ),
+        )
+
+    return AdminRuntimeResponse(
+        text="\n".join(
+            [
+                "Создать запись",
+                "",
+                f"Клиент: {_html(_client_display_name(client))} #{client.id}",
+                f"Услуга: {_html(preset.label)}",
+                f"Дата: {_format_date_label(selected_date)}",
+                f"Длительность: {duration_minutes} мин",
+                "Выберите время.",
+            ]
+        ),
+        buttons=tuple(
+            AdminRuntimeButton(
+                label=_manual_booking_slot_label(slot, settings, duration_minutes),
+                callback_data=admin_callback_data(
+                    AdminMenuAction.MANUAL_BOOKING_SLOT,
+                    _manual_booking_slot_value(
+                        client.id,
+                        preset.code,
+                        duration_minutes,
+                        slot.id,
+                    ),
+                ),
+            )
+            for slot in slots
+        )
+        + (
+            AdminRuntimeButton(
+                label="К датам",
+                callback_data=admin_callback_data(
+                    AdminMenuAction.MANUAL_BOOKING_DURATION,
+                    _manual_booking_duration_value(
+                        client.id,
+                        preset.code,
+                        duration_minutes,
+                    ),
+                ),
+            ),
+            _admin_menu_button(),
+        ),
+    )
+
+
+def handle_admin_manual_booking_confirm_prompt(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    draft: ManualBookingDraft,
+) -> AdminRuntimeResponse:
+    require_admin_user(telegram_user_id, settings)
+    if draft.slot_id is None:
+        raise ValueError("Invalid callback value")
+    client = session.get(Client, draft.client_id)
+    slot = session.get(Slot, draft.slot_id)
+    if client is None or slot is None:
+        return AdminRuntimeResponse(text=BOOKING_NOT_FOUND_TEXT)
+    preset = _manual_booking_service_preset(draft.service_code)
+    _ensure_manual_booking_slot_can_fit(
+        session,
+        settings,
+        slot=slot,
+        duration_minutes=draft.duration_minutes,
+    )
+    starts_at = _slot_local_start(slot, settings)
+    ends_at = starts_at + timedelta(minutes=draft.duration_minutes)
+
+    lines = [
+        "Создать запись?",
+        "",
+        f"Клиент: {_html(_client_display_name(client))} #{client.id}",
+        f"Услуга: {_html(preset.label)}",
+        f"Дата: {_format_date_label(starts_at.date())}",
+        f"Время: {starts_at:%H:%M}-{ends_at:%H:%M}",
+        f"Длительность: {draft.duration_minutes} мин",
+    ]
+    buttons: list[AdminRuntimeButton] = []
+    if preset.can_notify_client and _recipient_telegram_id_for_client(client):
+        buttons.append(
+            AdminRuntimeButton(
+                label="Создать и уведомить",
+                callback_data=admin_callback_data(
+                    AdminMenuAction.CONFIRM_MANUAL_BOOKING,
+                    _manual_booking_confirm_value(
+                        draft,
+                        notify_client=True,
+                    ),
+                ),
+            )
+        )
+    elif preset.can_notify_client:
+        lines.extend(("", "У клиента нет Telegram ID, уведомление не отправить."))
+    else:
+        lines.extend(
+            (
+                "",
+                "Для этой услуги цена индивидуальная, поэтому бот создаст запись "
+                "без автоматического сообщения клиенту.",
+            )
+        )
+    buttons.extend(
+        (
+            AdminRuntimeButton(
+                label="Создать без уведомления",
+                callback_data=admin_callback_data(
+                    AdminMenuAction.CONFIRM_MANUAL_BOOKING,
+                    _manual_booking_confirm_value(
+                        draft,
+                        notify_client=False,
+                    ),
+                ),
+            ),
+            AdminRuntimeButton(
+                label="Назад ко времени",
+                callback_data=admin_callback_data(
+                    AdminMenuAction.MANUAL_BOOKING_DATE,
+                    _manual_booking_date_value(
+                        draft.client_id,
+                        draft.service_code,
+                        draft.duration_minutes,
+                        starts_at.date(),
+                    ),
+                ),
+            ),
+            _admin_menu_button(),
+        )
+    )
+    return AdminRuntimeResponse(text="\n".join(lines), buttons=tuple(buttons))
+
+
+def handle_admin_manual_booking_apply(
+    session: Session,
+    settings: Settings,
+    *,
+    telegram_user_id: int | None,
+    draft: ManualBookingDraft,
+) -> tuple[AdminRuntimeResponse, AdminNotificationAttempt | None]:
+    require_admin_user(telegram_user_id, settings)
+    if draft.slot_id is None:
+        raise ValueError("Invalid callback value")
+    client = session.get(Client, draft.client_id)
+    slot = session.get(Slot, draft.slot_id)
+    if client is None or slot is None:
+        return AdminRuntimeResponse(text=BOOKING_NOT_FOUND_TEXT), None
+    preset = _manual_booking_service_preset(draft.service_code)
+    if draft.notify_client and not preset.can_notify_client:
+        raise ValueError("Для этой услуги уведомление из wizard недоступно.")
+    _ensure_manual_booking_slot_can_fit(
+        session,
+        settings,
+        slot=slot,
+        duration_minutes=draft.duration_minutes,
+    )
+    booking = create_manual_booking(
+        session,
+        client_id=client.id,
+        slot_id=slot.id,
+        service=preset.service,
+        duration_minutes=draft.duration_minutes,
+        price_amount=preset.price_amount,
+    )
+    response = AdminRuntimeResponse(
+        text=(
+            "Запись создана"
+            + (" и клиенту отправляется подтверждение" if draft.notify_client else "")
+            + "\n"
+            + _booking_line(booking, settings)
+        ),
+        buttons=(
+            _booking_detail_button(booking, settings),
+            _schedule_date_button(_booking_local_date(booking, settings)),
+            _admin_menu_button(),
+        ),
+    )
+    if not draft.notify_client:
+        return response, None
+
+    text = booking_confirmation_message(
+        booking,
+        timezone=settings.timezone_info,
+        **_settings_location_links(settings),
+    )
+    return response, AdminNotificationAttempt(
+        response=response,
+        booking_id=booking.id,
+        client_id=booking.client_id,
+        recipient_telegram_id=_recipient_telegram_id(booking),
+        kind="booking_confirmation",
+        text=text,
+        photo_path=SALON_ENTRANCE_PHOTO_PATH,
     )
 
 
@@ -920,6 +1450,15 @@ def handle_admin_client_card_view(
     buttons = []
     if contact_url:
         buttons.append(AdminRuntimeButton(label="Открыть чат", url=contact_url))
+    buttons.append(
+        AdminRuntimeButton(
+            label="Создать запись",
+            callback_data=admin_callback_data(
+                AdminMenuAction.MANUAL_BOOKING_CLIENT,
+                client.id,
+            ),
+        )
+    )
     if progress.pending_bonus_count:
         buttons.append(
             AdminRuntimeButton(
@@ -1884,6 +2423,113 @@ async def dispatch_admin_callback_payload(
                     telegram_user_id=telegram_user_id,
                 )
             )
+    if async_session_factory is not None and action is AdminMenuAction.MANUAL_BOOKING:
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_manual_booking_start(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                )
+            )
+    if (
+        async_session_factory is not None
+        and action is AdminMenuAction.MANUAL_BOOKING_CLIENT
+    ):
+        client_id = _parse_int_value(value)
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_manual_booking_client_choice(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    client_id=client_id,
+                )
+            )
+    if (
+        async_session_factory is not None
+        and action is AdminMenuAction.MANUAL_BOOKING_SERVICE
+    ):
+        client_id, service_code = _parse_manual_booking_service_value(value)
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_manual_booking_duration_choice(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    client_id=client_id,
+                    service_code=service_code,
+                )
+            )
+    if (
+        async_session_factory is not None
+        and action is AdminMenuAction.MANUAL_BOOKING_DURATION
+    ):
+        client_id, service_code, duration_minutes = (
+            _parse_manual_booking_duration_value(value)
+        )
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_manual_booking_date_choice(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    client_id=client_id,
+                    service_code=service_code,
+                    duration_minutes=duration_minutes,
+                )
+            )
+    if (
+        async_session_factory is not None
+        and action is AdminMenuAction.MANUAL_BOOKING_DATE
+    ):
+        client_id, service_code, duration_minutes, selected_date = (
+            _parse_manual_booking_date_value(value)
+        )
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_manual_booking_slot_choice(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    client_id=client_id,
+                    service_code=service_code,
+                    duration_minutes=duration_minutes,
+                    selected_date=selected_date,
+                )
+            )
+    if (
+        async_session_factory is not None
+        and action is AdminMenuAction.MANUAL_BOOKING_SLOT
+    ):
+        draft = _parse_manual_booking_slot_value(value)
+        async with async_session_factory() as async_session:
+            return await async_session.run_sync(
+                lambda session: handle_admin_manual_booking_confirm_prompt(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    draft=draft,
+                )
+            )
+    if (
+        async_session_factory is not None
+        and action is AdminMenuAction.CONFIRM_MANUAL_BOOKING
+    ):
+        draft = _parse_manual_booking_confirm_value(value)
+        async with async_session_factory() as async_session:
+            response, attempt = await async_session.run_sync(
+                lambda session: handle_admin_manual_booking_apply(
+                    session,
+                    settings,
+                    telegram_user_id=telegram_user_id,
+                    draft=draft,
+                )
+            )
+            if attempt is not None:
+                await _send_and_log_admin_notification(async_session, bot, attempt)
+            await async_session.commit()
+            return response
     if action is AdminMenuAction.MANUAL_BOOKING:
         require_admin_user(telegram_user_id, settings)
         return AdminRuntimeResponse(
@@ -2528,6 +3174,278 @@ def _parse_two_ints(value: str | None) -> tuple[int, int]:
     return _parse_int_value(left), _parse_int_value(right)
 
 
+def _parse_manual_booking_service_value(value: str | None) -> tuple[int, str]:
+    if value is None or "|" not in value:
+        raise ValueError("Invalid callback value")
+    raw_client_id, service_code = value.split("|", maxsplit=1)
+    _manual_booking_service_preset(service_code)
+    return _parse_int_value(raw_client_id), service_code
+
+
+def _parse_manual_booking_duration_value(value: str | None) -> tuple[int, str, int]:
+    parts = _manual_booking_parts(value, expected_count=3)
+    client_id = _parse_int_value(parts[0])
+    service_code = parts[1]
+    preset = _manual_booking_service_preset(service_code)
+    duration_minutes = _parse_int_value(parts[2])
+    if duration_minutes not in preset.duration_presets:
+        raise ValueError("Invalid callback value")
+    return client_id, service_code, duration_minutes
+
+
+def _parse_manual_booking_date_value(
+    value: str | None,
+) -> tuple[int, str, int, date]:
+    parts = _manual_booking_parts(value, expected_count=4)
+    client_id, service_code, duration_minutes = _parse_manual_booking_duration_value(
+        "|".join(parts[:3])
+    )
+    return client_id, service_code, duration_minutes, _parse_date_value(parts[3])
+
+
+def _parse_manual_booking_slot_value(value: str | None) -> ManualBookingDraft:
+    parts = _manual_booking_parts(value, expected_count=4)
+    client_id, service_code, duration_minutes = _parse_manual_booking_duration_value(
+        "|".join(parts[:3])
+    )
+    return ManualBookingDraft(
+        client_id=client_id,
+        service_code=service_code,
+        duration_minutes=duration_minutes,
+        slot_id=_parse_int_value(parts[3]),
+    )
+
+
+def _parse_manual_booking_confirm_value(value: str | None) -> ManualBookingDraft:
+    parts = _manual_booking_parts(value, expected_count=5)
+    draft = _parse_manual_booking_slot_value("|".join(parts[:4]))
+    mode = parts[4]
+    if mode not in {MANUAL_BOOKING_NOTIFY, MANUAL_BOOKING_SILENT}:
+        raise ValueError("Invalid callback value")
+    return ManualBookingDraft(
+        client_id=draft.client_id,
+        service_code=draft.service_code,
+        duration_minutes=draft.duration_minutes,
+        slot_id=draft.slot_id,
+        notify_client=mode == MANUAL_BOOKING_NOTIFY,
+    )
+
+
+def _manual_booking_parts(value: str | None, *, expected_count: int) -> list[str]:
+    if value is None:
+        raise ValueError("Missing callback value")
+    parts = value.split("|")
+    if len(parts) != expected_count or any(not part for part in parts):
+        raise ValueError("Invalid callback value")
+    return parts
+
+
+def _manual_booking_service_value(client_id: int, service_code: str) -> str:
+    return f"{client_id}|{service_code}"
+
+
+def _manual_booking_duration_value(
+    client_id: int,
+    service_code: str,
+    duration_minutes: int,
+) -> str:
+    return f"{client_id}|{service_code}|{duration_minutes}"
+
+
+def _manual_booking_date_value(
+    client_id: int,
+    service_code: str,
+    duration_minutes: int,
+    selected_date: date,
+) -> str:
+    return (
+        f"{_manual_booking_duration_value(client_id, service_code, duration_minutes)}"
+        f"|{selected_date.isoformat()}"
+    )
+
+
+def _manual_booking_slot_value(
+    client_id: int,
+    service_code: str,
+    duration_minutes: int,
+    slot_id: int,
+) -> str:
+    return (
+        f"{_manual_booking_duration_value(client_id, service_code, duration_minutes)}"
+        f"|{slot_id}"
+    )
+
+
+def _manual_booking_confirm_value(
+    draft: ManualBookingDraft,
+    *,
+    notify_client: bool,
+) -> str:
+    if draft.slot_id is None:
+        raise ValueError("Invalid callback value")
+    mode = MANUAL_BOOKING_NOTIFY if notify_client else MANUAL_BOOKING_SILENT
+    return (
+        _manual_booking_slot_value(
+            draft.client_id,
+            draft.service_code,
+            draft.duration_minutes,
+            draft.slot_id,
+        )
+        + f"|{mode}"
+    )
+
+
+def _manual_booking_service_preset(service_code: str) -> ManualBookingServicePreset:
+    for preset in MANUAL_BOOKING_SERVICE_PRESETS:
+        if preset.code == service_code:
+            return preset
+    raise ValueError("Invalid callback value")
+
+
+def _manual_booking_client_button(client: Client) -> AdminRuntimeButton:
+    return AdminRuntimeButton(
+        label=_client_button_label(client),
+        callback_data=admin_callback_data(
+            AdminMenuAction.MANUAL_BOOKING_CLIENT,
+            client.id,
+        ),
+    )
+
+
+def _manual_booking_date_options(
+    session: Session,
+    settings: Settings,
+    *,
+    duration_minutes: int,
+    now: datetime | None = None,
+) -> tuple[tuple[date, int], ...]:
+    start_date = _datetime_local(now or datetime.now(UTC), settings).date()
+    options: list[tuple[date, int]] = []
+    for offset in range(MANUAL_BOOKING_DATE_DAYS_TO_SHOW):
+        selected_date = start_date + timedelta(days=offset)
+        count = len(
+            _manual_booking_available_start_slots(
+                session,
+                settings,
+                selected_date=selected_date,
+                duration_minutes=duration_minutes,
+                now=now,
+            )
+        )
+        if count:
+            options.append((selected_date, count))
+    return tuple(options)
+
+
+def _manual_booking_available_start_slots(
+    session: Session,
+    settings: Settings,
+    *,
+    selected_date: date,
+    duration_minutes: int,
+    now: datetime | None = None,
+) -> tuple[Slot, ...]:
+    slots = _slots_for_date(session, settings, selected_date)
+    slots_by_start = {
+        _slot_local_start(slot, settings).replace(tzinfo=None): slot for slot in slots
+    }
+    now_local = _datetime_local(now or datetime.now(UTC), settings).replace(tzinfo=None)
+    available: list[Slot] = []
+    for slot in slots:
+        starts_at = _slot_local_start(slot, settings).replace(tzinfo=None)
+        ends_at = starts_at + timedelta(minutes=duration_minutes)
+        if starts_at <= now_local:
+            continue
+        if not _manual_booking_has_open_coverage(
+            slots_by_start,
+            starts_at=starts_at,
+            ends_at=ends_at,
+        ):
+            continue
+        if _manual_booking_has_active_overlap(
+            session,
+            starts_at=starts_at,
+            ends_at=ends_at,
+        ):
+            continue
+        available.append(slot)
+    return tuple(sorted(available, key=lambda item: _slot_local_start(item, settings)))
+
+
+def _ensure_manual_booking_slot_can_fit(
+    session: Session,
+    settings: Settings,
+    *,
+    slot: Slot,
+    duration_minutes: int,
+) -> None:
+    starts_at = _slot_local_start(slot, settings).replace(tzinfo=None)
+    selected_date = starts_at.date()
+    available_slot_ids = {
+        available.id
+        for available in _manual_booking_available_start_slots(
+            session,
+            settings,
+            selected_date=selected_date,
+            duration_minutes=duration_minutes,
+        )
+    }
+    if slot.id not in available_slot_ids:
+        raise SlotUnavailableError(
+            "Это время уже недоступно для выбранной длительности."
+        )
+
+
+def _manual_booking_has_open_coverage(
+    slots_by_start: dict[datetime, Slot],
+    *,
+    starts_at: datetime,
+    ends_at: datetime,
+) -> bool:
+    current = starts_at
+    while current < ends_at:
+        slot = slots_by_start.get(current)
+        if slot is None or slot.is_blocked:
+            return False
+        current += timedelta(hours=1)
+    return True
+
+
+def _manual_booking_has_active_overlap(
+    session: Session,
+    *,
+    starts_at: datetime,
+    ends_at: datetime,
+) -> bool:
+    return (
+        session.scalar(
+            select(Booking.id)
+            .where(
+                Booking.status.in_(ACTIVE_BOOKING_STATUSES),
+                Booking.starts_at < ends_at,
+                Booking.ends_at > starts_at,
+            )
+            .limit(1)
+        )
+        is not None
+    )
+
+
+def _manual_booking_slot_label(
+    slot: Slot,
+    settings: Settings,
+    duration_minutes: int,
+) -> str:
+    starts_at = _slot_local_start(slot, settings)
+    ends_at = starts_at + timedelta(minutes=duration_minutes)
+    return f"{starts_at:%H:%M}-{ends_at:%H:%M}"
+
+
+def _recipient_telegram_id_for_client(client: Client) -> int | None:
+    user = client.user if client else None
+    return user.telegram_id if user else None
+
+
 def _admin_dashboard_buttons() -> tuple[AdminRuntimeButton, ...]:
     return (
         AdminRuntimeButton(
@@ -2891,7 +3809,17 @@ async def _send_and_log_admin_notification(
         error = "Client has no Telegram identity"
     else:
         try:
-            await bot.send_message(attempt.recipient_telegram_id, attempt.text)
+            if attempt.photo_path is not None and attempt.photo_path.exists():
+                from aiogram.types import FSInputFile
+
+                await bot.send_photo(
+                    attempt.recipient_telegram_id,
+                    photo=FSInputFile(attempt.photo_path),
+                    caption=attempt.text,
+                    parse_mode="HTML",
+                )
+            else:
+                await bot.send_message(attempt.recipient_telegram_id, attempt.text)
         except Exception as exc:  # noqa: BLE001 - delivery failures must be logged
             status = DeliveryStatus.FAILED
             error = str(exc) or exc.__class__.__name__
@@ -2933,8 +3861,7 @@ def _record_admin_notification_log(
 
 
 def _recipient_telegram_id(booking: Booking) -> int | None:
-    user = booking.client.user if booking.client else None
-    return user.telegram_id if user else None
+    return _recipient_telegram_id_for_client(booking.client)
 
 
 def _html(value: object) -> str:

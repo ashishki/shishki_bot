@@ -1038,3 +1038,59 @@ Context-Refs:
   - docs/spec.md#feature-9---referral-program
   - docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity
   - docs/IMPLEMENTATION_CONTRACT.md#control-surface-and-runtime-boundaries
+
+## T28: Salon Entrance Confirmation And Admin Booking Wizard
+
+Owner:      codex
+Phase:      5
+Type:       feature
+Depends-On: T27
+Status:     [x] complete
+Completed:  2026-07-06
+
+Objective: |
+  Add the salon entrance photo/hint to booking confirmations and replace the
+  admin `Создать запись` dead-end with a button-driven manual booking wizard.
+
+Acceptance-Criteria:
+  - id: AC-1
+    description: "Client haircut confirmations include the salon entrance hint and carry the entrance photo path for runtime photo delivery."
+    test: "tests/test_client_handlers.py::test_client_haircut_booking_flow"
+  - id: AC-2
+    description: "Booking confirmation copy includes the ADITI entrance guidance while active-booking views can omit it."
+    test: "tests/test_notifications.py::test_confirmation_message_contains_required_fields"
+  - id: AC-3
+    description: "Admin `Создать запись` starts a concrete client/service/duration/date/time/confirm wizard and can create a haircut booking that sends a photo confirmation."
+    test: "tests/test_admin_booking.py::test_admin_manual_booking_button_flow_creates_haircut_with_photo"
+  - id: AC-4
+    description: "The existing `/book` command still creates manual bookings and now sends the salon entrance photo for client confirmations."
+    test: "tests/test_admin_booking.py::test_admin_manual_booking_command_creates_booking_and_hides_overlap"
+
+Migration-Note: |
+  No schema migration. The new flow uses callback payload state and existing
+  booking/notification tables.
+
+Files:
+  - IMG_9610.JPG
+  - app/bot/keyboards.py
+  - app/bot/messages.py
+  - app/bot/handlers/client.py
+  - app/bot/handlers/admin.py
+  - tests/test_notifications.py
+  - tests/test_client_handlers.py
+  - tests/test_admin_booking.py
+  - docs/ARCHITECTURE.md
+  - docs/spec.md
+  - docs/ADMIN_GUIDE.md
+  - docs/CODEX_PROMPT.md
+  - docs/tasks.md
+  - docs/IMPLEMENTATION_JOURNAL.md
+  - docs/EVIDENCE_INDEX.md
+
+Context-Refs:
+  - docs/spec.md#feature-2---simple-haircut-booking
+  - docs/spec.md#feature-3---complex-service-redirect-and-manual-booking
+  - docs/spec.md#feature-4---admin-booking-management
+  - docs/IMPLEMENTATION_CONTRACT.md#admin-authorization
+  - docs/IMPLEMENTATION_CONTRACT.md#booking-integrity
+  - docs/IMPLEMENTATION_CONTRACT.md#client-notification-integrity

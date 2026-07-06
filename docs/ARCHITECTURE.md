@@ -25,11 +25,11 @@ or cross-project skill is proposed later.
 ## System Overview
 
 `shishki_bot` is a single-stylist Telegram booking and lightweight operations
-bot. Clients use it to book simple services, receive appointment confirmations,
-and get reminders or change notifications. The stylist uses an admin menu to
-manage availability, create manual bookings for complex services, edit/cancel
-appointments, record final amounts and basic expenses, and view weekly revenue
-and client history.
+bot. Clients use it to book simple services, receive appointment confirmations
+with location/entrance guidance, and get reminders or change notifications. The
+stylist uses an admin menu to manage availability, create manual bookings for
+complex services, edit/cancel appointments, record final amounts and basic
+expenses, and view weekly revenue and client history.
 
 The system should be deterministic. Booking rules, reminders, notifications,
 financial summaries, and status transitions must be implemented as normal
@@ -133,8 +133,8 @@ new value, and reason/note when provided.
 | Bot entrypoint | `app/main.py` | Starts Telegram bot, scheduler, and app wiring. |
 | Configuration | `app/config.py` | Environment variables and settings validation. |
 | Client handlers | `app/bot/handlers/client.py` | Client menus, booking flow, booking view, cancel/reschedule request flow. |
-| Admin handlers | `app/bot/handlers/admin.py` | Admin menu, slot management, manual bookings, edits, stats, client cards. |
-| Message templates | `app/bot/messages.py` | Confirmation, reminder, reschedule, cancellation, admin notifications. |
+| Admin handlers | `app/bot/handlers/admin.py` | Admin menu, slot management, button/command manual bookings, edits, stats, client cards. |
+| Message templates | `app/bot/messages.py` | Confirmation with salon entrance guidance, reminder, reschedule, cancellation, admin notifications. |
 | Services | `app/services/` | Booking, notification, reminder, finance, client history, and referral business logic. |
 | Database models | `app/db/models.py` | Users, clients, slots, bookings, status history, expenses, notification/reminder logs, referral codes, referrals, referral manual credits, and referral bonuses. |
 | Database session | `app/db/session.py` | Engine/session setup and transaction boundary helpers. |
@@ -147,7 +147,8 @@ new value, and reason/note when provided.
 2. Bot reads available slots from database.
 3. Client selects slot and confirms.
 4. Booking service locks the slot and creates a `confirmed` booking in one transaction.
-5. Notification service sends client confirmation and admin notification.
+5. Notification service sends client confirmation with map links and salon
+   entrance guidance, then sends admin notification.
 6. Scheduler records reminder jobs based on booking time.
 7. Admin can edit/reschedule/cancel booking; each change is persisted, logged,
    and triggers a client notification when relevant.

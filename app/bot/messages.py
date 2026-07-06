@@ -11,6 +11,10 @@ from app.db.models import Booking, Client
 from app.services.booking import haircut_service_label
 
 DEFAULT_MESSAGE_TIMEZONE = ZoneInfo("Asia/Tbilisi")
+SALON_ENTRANCE_HINT_TEXT = (
+    "Ориентир для входа: ищите вывеску ADITI BEAUTY CENTRE. "
+    "Заходите в стеклянную дверь под вывеской, рядом с табличкой 22."
+)
 
 
 def booking_confirmation_message(
@@ -21,6 +25,7 @@ def booking_confirmation_message(
     google_map_url: str | None = None,
     default_map_url: str | None = None,
     include_change_hint: bool = True,
+    include_entrance_hint: bool = True,
 ) -> str:
     lines = [
         "Запись подтверждена",
@@ -34,9 +39,15 @@ def booking_confirmation_message(
             google_map_url=google_map_url,
             default_map_url=default_map_url,
         ),
-        f"{booking.duration_minutes} мин",
-        f"{_format_money(booking.price_amount)} GEL",
     ]
+    if include_entrance_hint:
+        lines.extend(("", SALON_ENTRANCE_HINT_TEXT))
+    lines.extend(
+        [
+            f"{booking.duration_minutes} мин",
+            f"{_format_money(booking.price_amount)} GEL",
+        ]
+    )
     if include_change_hint:
         lines.extend(
             [

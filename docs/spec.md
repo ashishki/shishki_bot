@@ -1,7 +1,7 @@
 # Product Spec - shishki_bot
 
 Version: 1.0
-Last updated: 2026-06-30
+Last updated: 2026-07-06
 Status: Phase 1 bootstrap
 
 ## Overview
@@ -46,7 +46,8 @@ Acceptance criteria:
 2. Client must confirm before booking is created.
 3. Booking stores client, service, date/time, duration, place, price, status, and created timestamp.
 4. Slot cannot be double-booked under concurrent attempts.
-5. Client receives confirmation with service, date, time, place, duration, price, and change/cancel instructions.
+5. Client receives confirmation with service, date, time, place, map links,
+   salon entrance hint/photo, duration, price, and change/cancel instructions.
 6. Stylist admin receives a notification after confirmed self-booking, client
    reschedule, and client cancellation; the notification includes client
    identity/chat when available, and delivery success/failure is logged.
@@ -70,8 +71,12 @@ Acceptance criteria:
    choices and the main menu.
 5. Admin can create a manual booking with custom service, duration, date/time,
    price, place, and notes using either client ID or Telegram username.
-6. Admin can send client a confirmation for a manual booking when the client has a Telegram identity.
-7. Manual bookings block all overlapping self-booking slots for their full
+6. Admin can create common manual bookings through a button flow: client,
+   service, duration, date, time, and final confirmation.
+7. Admin can send client a confirmation with salon entrance photo for a manual
+   booking when the client has a Telegram identity and the service has a known
+   client-visible price.
+8. Manual bookings block all overlapping self-booking slots for their full
    duration, not only the starting slot.
 
 Out of scope for v1: AI price/time estimation from photos or descriptions.
@@ -95,6 +100,8 @@ Acceptance criteria:
    changing occupied active bookings.
 9. Admin can open client list/cards and see per-client visit, spend, current
    booking, history, and referral metrics.
+10. Admin can create a booking from the dashboard or client card through
+    guided buttons without memorizing the `/book` format.
 
 Out of scope for v1: web admin panel and multi-admin permissions beyond a simple allowlist.
 

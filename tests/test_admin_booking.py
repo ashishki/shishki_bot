@@ -128,6 +128,8 @@ def test_admin_manual_booking_command_creates_booking_and_hides_overlap() -> Non
     assert booking.duration_minutes == 180
     assert booking.ends_at.replace(tzinfo=None) == starts_at + timedelta(hours=3)
     assert attempt.kind == "booking_confirmation"
+    assert attempt.photo_path is not None
+    assert attempt.photo_path.name == "IMG_9610.JPG"
     assert "Окрашивание" in attempt.text
     assert available_slots == [after_manual]
     assert overlap_one not in available_slots
@@ -410,10 +412,123 @@ async def test_admin_dashboard_buttons_dispatch_runtime_responses() -> None:
         assert "Даты расписания" in responses["Записи"]
         assert "Клиенты" in responses["Клиенты"]
         assert "Метрики" in responses["Метрики"]
-        assert "Создать ручную запись" in responses["Создать запись"]
+        assert "Выберите клиента" in responses["Создать запись"]
         assert "Рабочее время" in responses["Рабочее время"]
         assert "Расписание:" in responses["Сегодня"]
         assert "Бонусов к выдаче пока нет" in responses["Бонусы"]
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_admin_manual_booking_button_flow_creates_haircut_with_photo() -> None:
+    engine = db_session.create_database_engine("sqlite+aiosqlite:///:memory:")
+    await db_session.create_all(engine)
+    session_factory = db_session.create_session_factory(engine)
+    settings = _settings()
+    starts_at = (datetime.now(settings.timezone_info) + timedelta(days=3)).replace(
+        hour=10,
+        minute=0,
+        second=0,
+        microsecond=0,
+        tzinfo=None,
+    )
+
+    try:
+        async with session_factory() as async_session:
+            client_id = await async_session.run_sync(
+                lambda session: _create_client(session).id
+            )
+            await async_session.run_sync(
+                lambda session: _create_slot(session, starts_at=starts_at)
+            )
+            await async_session.run_sync(
+                lambda session: _create_slot(
+                    session,
+                    starts_at=starts_at + timedelta(hours=1),
+                )
+            )
+            await async_session.commit()
+
+        start = await dispatch_admin_callback_payload(
+            admin_callback_data(AdminMenuAction.MANUAL_BOOKING),
+            settings,
+            telegram_user_id=111,
+            async_session_factory=session_factory,
+        )
+        client_button = _button_containing(start.buttons, str(client_id))
+
+        service = await dispatch_admin_callback_payload(
+            client_button.callback_data,
+            settings,
+            telegram_user_id=111,
+            async_session_factory=session_factory,
+        )
+        male_haircut = _button_with_label(service.buttons, "Мужская стрижка")
+
+        duration = await dispatch_admin_callback_payload(
+            male_haircut.callback_data,
+            settings,
+            telegram_user_id=111,
+            async_session_factory=session_factory,
+        )
+        sixty_minutes = _button_with_label(duration.buttons, "60 мин")
+
+        dates = await dispatch_admin_callback_payload(
+            sixty_minutes.callback_data,
+            settings,
+            telegram_user_id=111,
+            async_session_factory=session_factory,
+        )
+        date_button = _button_containing(
+            dates.buttons,
+            starts_at.date().isoformat(),
+        )
+
+        times = await dispatch_admin_callback_payload(
+            date_button.callback_data,
+            settings,
+            telegram_user_id=111,
+            async_session_factory=session_factory,
+        )
+        time_button = _button_with_label(times.buttons, "10:00")
+
+        confirm = await dispatch_admin_callback_payload(
+            time_button.callback_data,
+            settings,
+            telegram_user_id=111,
+            async_session_factory=session_factory,
+        )
+        notify = _button_with_label(confirm.buttons, "Создать и уведомить")
+        bot = FakeBot()
+
+        created = await dispatch_admin_callback_payload(
+            notify.callback_data,
+            settings,
+            telegram_user_id=111,
+            async_session_factory=session_factory,
+            bot=bot,
+        )
+
+        async with session_factory() as async_session:
+            booking, log = await async_session.run_sync(
+                lambda session: (
+                    session.scalar(select(Booking)),
+                    session.scalar(select(NotificationLog)),
+                )
+            )
+
+        assert "Запись создана" in created.text
+        assert booking is not None
+        assert booking.client_id == client_id
+        assert booking.service == "haircut_male"
+        assert booking.duration_minutes == 60
+        assert booking.price_amount == Decimal("100.00")
+        assert log is not None
+        assert log.status is DeliveryStatus.SENT
+        assert bot.photos
+        assert bot.photos[0][0] == 123
+        assert "ADITI BEAUTY CENTRE" in bot.photos[0][2]
     finally:
         await engine.dispose()
 
@@ -847,6 +962,25 @@ class FakeSender:
 
     def send_message(self, recipient_telegram_id: int, text: str) -> None:
         self.messages.append((recipient_telegram_id, text))
+
+
+class FakeBot:
+    def __init__(self) -> None:
+        self.messages: list[tuple[int, str]] = []
+        self.photos: list[tuple[int, object, str, str | None]] = []
+
+    async def send_message(self, recipient_telegram_id: int, text: str) -> None:
+        self.messages.append((recipient_telegram_id, text))
+
+    async def send_photo(
+        self,
+        recipient_telegram_id: int,
+        *,
+        photo: object,
+        caption: str,
+        parse_mode: str | None = None,
+    ) -> None:
+        self.photos.append((recipient_telegram_id, photo, caption, parse_mode))
 
 
 def _button_with_label(buttons, expected_label: str):
