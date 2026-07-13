@@ -261,13 +261,13 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
   completed visits/spend. Dashboard button callbacks are regression-tested
   through the runtime dispatch path used by Telegram.
 - Live local database was backed up to
-  `/srv/openclaw-you/backups/shishki_bot/shishki_bot_before_official_slots_20260624_130105.db`
+  private backup ID `before-official-slots-20260624` (not published)
   before clearing test booking/slot records. Active official slots are
   2026-06-28 13:00-19:00, 2026-07-04 10:00-15:00 with active bookings at
   14:00 and 15:00 and closed slots from 16:00, 2026-07-08 10:00-19:00,
   and 2026-07-12 10:00-19:00 at the configured address. 2026-07-10 is closed.
 - Latest live database backup before T22 schedule edits:
-  `/srv/openclaw-you/backups/shishki_bot/shishki_bot_before_t22_schedule_20260630_170754.db`.
+  private backup ID `before-t22-schedule-20260630` (not published).
 
 ## Instructions For Codex
 

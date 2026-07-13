@@ -313,7 +313,7 @@ Status: append-only
 - Why: Admin needs a practical way to create complex/manual bookings, client contact-intent needs to be visible in client cards, and active bookings must hide every overlapping self-booking slot, not only the exact starting slot.
 - Decisions applied: `D-002`, `D-003`, `D-004`
 - Evidence collected: targeted booking/client/admin tests; ruff check; ruff format --check; full pytest passed with 79 tests; integrity check; skill security gate; systemd service restarted and active.
-- Data operation: stopped `shishki-bot.service`, backed up `shishki_bot.db` to `/srv/openclaw-you/backups/shishki_bot/shishki_bot_before_official_slots_20260624_130105.db`, cleared 1 test booking, 10 test slots, 2 reminder logs, and 1 status-history row, then created 17 official slots.
+- Historical operator note: a private database backup was recorded under ID `before-official-slots-20260624` before test rows and schedule fixtures were changed. The backup and runtime database are not public evidence.
 - Official slots: 2026-06-28 Sunday hourly starts 13:00 through 19:00; 2026-07-04 Saturday hourly starts 10:00 through 19:00; place is `Сулхана Цинцадзе 22, м. Технический Университет`.
 - Follow-ups: Smoke-test `/book`, `/admin` -> `Клиенты`, and the client stale-slot conflict in Telegram before a large announcement.
 - Notes: No schema migration. `/book` creates/logs a client confirmation attempt and relies on existing client cards; clients create a card by pressing `/start`, `Окрашивание`, or `Консультация`.
@@ -334,7 +334,7 @@ Status: append-only
 - Why: Clients need male/female haircut pricing, admin needs to identify who booked and book by username, and the live schedule needs operational controls for closing free time.
 - Decisions applied: `D-002`, `D-003`, `D-004`
 - Evidence collected: targeted booking/client/admin/notification tests; ruff check; ruff format --check; full pytest passed with 85 tests; integrity check; skill security gate.
-- Data operation: stopped `shishki-bot.service`, backed up `shishki_bot.db` to `/srv/openclaw-you/backups/shishki_bot/shishki_bot_before_t20_slots_20260628_161425.db`, closed free 2026-07-04 slots at 16:00, 17:00, 18:00, and 19:00, and created 20 slots for 2026-07-08 and 2026-07-10 hourly starts 10:00 through 19:00.
+- Historical operator note: a private database backup was recorded under ID `before-t20-slots-20260628` before schedule state was changed. The backup and runtime database are not public evidence.
 - Live schedule check: 2026-07-04 has active bookings at 14:00 and 15:00, so client-visible open starts are 10:00 through 13:00; 2026-07-08 and 2026-07-10 show 10:00 through 19:00.
 - Follow-ups: Smoke-test `/book @username`, `/close`, `/close_day`, and one male/female client booking path in Telegram after restart.
 - Notes: No schema migration. Existing legacy `haircut` bookings remain readable; new self-booked haircuts store `haircut_male` or `haircut_female`.
@@ -354,7 +354,7 @@ Status: append-only
 - Why: Admin needs to create or reopen working days after schedule changes, and new clients should see the referral bonus entry point immediately on start.
 - Decisions applied: `D-002`, `D-003`, `D-004`
 - Evidence collected: targeted admin/client menu tests; ruff check; ruff format --check; full pytest passed with 87 tests; integrity check; skill security gate.
-- Data operation: stopped `shishki-bot.service`, backed up `shishki_bot.db` to `/srv/openclaw-you/backups/shishki_bot/shishki_bot_before_t22_schedule_20260630_170754.db`, confirmed 2026-07-10 had 10 already-closed slots and no active bookings, then created 10 hourly 2026-07-12 slots for starts 10:00 through 19:00.
+- Historical operator note: a private database backup was recorded under ID `before-t22-schedule-20260630` before schedule state was changed. The backup and runtime database are not public evidence.
 - Live schedule check: client-visible slots for 2026-07-10 are empty; client-visible slots for 2026-07-12 are 10:00 through 19:00.
 - Follow-ups: Smoke-test `/open_day`, `/open`, `/close_day`, and `/start` in Telegram after restart.
 - Notes: No schema migration. Opening a slot with an active overlapping booking does not make it client-bookable because the existing availability query hides active booking overlaps.
@@ -401,7 +401,7 @@ Status: append-only
 - Why: The approved bug-report thank-you needed to count as 1 bonus-credit for the client without faking a completed referred client or losing admin visibility.
 - Decisions applied: `D-002`, `D-004`
 - Evidence collected: targeted referral/notification/model tests; ruff check; ruff format --check; full pytest passed with 92 tests; integrity check; skill security gate.
-- Data operation: stopped `shishki-bot.service`, backed up `shishki_bot.db` to `/srv/openclaw-you/backups/shishki_bot/shishki_bot_before_t27_manual_referral_credit_20260701_163904.db`, applied additive `referral_manual_credits` schema creation, credited client `#10` with dedupe key `alexander-time-bug-2026-07-01`, sent the thanks/referral-link message, logged notification `#8`, and restarted the service.
+- Historical operator note: a private database backup was recorded under ID `before-t27-manual-referral-credit-20260701` before the additive manual-credit schema and one private client record were exercised. Client identifiers, dedupe keys, messages, notification IDs, and runtime state are deliberately excluded from the public journal.
 - Follow-ups: Confirm the client sees the thanks/referral-link message in Telegram and that the admin client card shows `Засчитано к бонусу: 1/3` with `Ручные начисления: 1`.
 - Notes: Manual credits are counted toward bonus thresholds, but real qualified referrals remain visible separately in admin cards.
 

@@ -1,16 +1,21 @@
 # shishki_bot
 
-Standard-mode Python scaffold for a Telegram booking and lightweight operations
-bot for one stylist.
+Deterministic Telegram booking and lightweight operations reference for one
+stylist. Booking, authorization, reminders, and financial totals stay in tested
+code and database transactions rather than an LLM.
 
 ## Current Status
 
-- Phase 5 is complete. T26 is complete: reminder delivery now has regression
-  coverage proving local naive appointment times are sent without timezone shift.
-- Next task: none in the current task graph.
-- Cycle 9 T13 deployment/operator review findings were closed.
-- Production v1 remains deterministic: no production LLM behavior or external
-  skills are planned.
+- The clean-clone public proof is the automated test and integrity suite. It
+  covers booking rules, admin authorization, reminders, referrals, and finance
+  calculations with synthetic/in-memory data and fake senders.
+- Current deployment, current operator use, real clients, adoption, and outcome
+  metrics are not verified by public repository artifacts. Historical runtime
+  notes are not current operating evidence.
+- The implementation is deterministic: no LLM behavior or external agent skill
+  is in the booking decision path.
+- Machine-readable claim status:
+  `docs/evidence/public_operating_status.json`.
 
 ## Start Here
 
@@ -39,6 +44,10 @@ python3 tools/skill_security_gate.py --root . --discover-agent-skills --require-
 
 The CI workflow runs the same lint, format, test, integrity, and external skill
 security checks on push and pull request.
+
+Passing these checks demonstrates repository behavior against fixtures. It does
+not demonstrate a live bot, real bookings, zero incidents, operator adoption, or
+business impact.
 
 ## Local Setup
 

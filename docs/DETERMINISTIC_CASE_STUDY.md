@@ -16,13 +16,17 @@ transactions, reminders, operator controls, and tests.
 | Revenue and client history | Database queries | Totals must reconcile to stored completed bookings and expenses. |
 | Client/admin messages | Templates | Users need consistent wording, not creative variation. |
 
-## First Proof Metrics
+## Unmeasured Launch Hypotheses
 
-- 30-50% of standard haircut bookings move through the bot after launch.
-- Zero double bookings in normal operation.
+No public repository artifact records a launch, current deployment, real
+bookings, or measured outcomes. The following are prospective acceptance targets,
+not observed metrics:
+
+- 30-50% of standard haircut bookings move through the bot after a future launch.
+- Zero double bookings would be the operating target.
 - Confirmation messages always include service, date, time, place, and price.
 - Reminder messages are sent without timezone shift.
-- Weekly revenue matches completed bookings and recorded expenses.
+- Weekly revenue should reconcile to completed bookings and recorded expenses.
 - Admin can operate the schedule without editing the database manually.
 
 ## Operator Checks
