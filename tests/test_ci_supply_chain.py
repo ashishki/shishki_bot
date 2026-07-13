@@ -27,12 +27,14 @@ def test_all_active_workflows_use_read_only_pinned_actions() -> None:
             if line.strip()
         ] == ["contents: read"]
 
-        action_steps = re.findall(
-            r"(?m)^[ \t]*(?:-[ \t]*)?uses:[ \t]+(actions/[^@\s]+)@([^\s#]+)",
+        action_references = re.findall(
+            r"(?m)^[ \t]*(?:-[ \t]*)?uses:[ \t]+([^\s#]+)",
             text,
         )
-        assert action_steps
-        for action, revision in action_steps:
+        assert action_references
+        for reference in action_references:
+            action, separator, revision = reference.partition("@")
+            assert separator == "@"
             assert action in PINNED_OFFICIAL_ACTIONS
             assert revision == PINNED_OFFICIAL_ACTIONS[action]
 
