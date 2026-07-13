@@ -1,4 +1,5 @@
 import json
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,15 +28,33 @@ def test_public_operating_status_blocks_unverified_claims() -> None:
     } <= set(status["blocked_claims"])
 
 
-def test_public_docs_do_not_publish_runtime_paths_or_client_receipts() -> None:
-    public_docs = "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in sorted((ROOT / "docs").rglob("*.md"))
-        if path.name != "ORCHESTRATOR.md"
-    )
+def test_tracked_text_does_not_publish_runtime_paths_or_client_receipts() -> None:
+    tracked = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    ).stdout.split(b"\0")
+    public_text: list[str] = []
+    for encoded_path in tracked:
+        if not encoded_path:
+            continue
+        contents = (ROOT / encoded_path.decode()).read_bytes()
+        try:
+            public_text.append(contents.decode("utf-8"))
+        except UnicodeDecodeError:
+            continue
 
-    assert "<private-host>" not in public_docs
-    assert "<redacted-client-marker>" not in public_docs
+    searchable = "\n".join(public_text)
+    private_host_root = "/" + "srv" + "/" + "openclaw-you"
+    client_receipt = "alexander" + "-time-bug"
+    client_identifier = "client `" + "#10" + "`"
+    notification_identifier = "notification `" + "#8" + "`"
+
+    assert private_host_root not in searchable
+    assert client_receipt not in searchable
+    assert client_identifier not in searchable
+    assert notification_identifier not in searchable
 
 
 def test_case_study_labels_targets_as_unmeasured() -> None:

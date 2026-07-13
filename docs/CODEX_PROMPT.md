@@ -212,14 +212,15 @@ none - Cycle 1 P2 findings CODE-1 and CODE-2 were addressed during T05.
 - Repository promoted to Standard mode because the app is customer-facing and
   stores client/booking/finance data.
 - Claude Code command flow is not used. Codex is the implementation surface.
-- Local Telegram testing setup completed for supplied credentials: Russian
-  client/admin UX, 2026-06-27 haircut slots, map-link message templates, client
-  self-service booking management, admin client/schedule controls, and a running
-  background bot process with PID recorded in `bot.pid`.
-- Reminder delivery is wired into runtime: `app.main` starts the reminder
-  scheduler with the bot, due reminders are sent through Telegram, and the
-  current systemd service has been restarted on the updated code. Reminder
-  messages do not include appointment price.
+- A historical operator note recorded a local Telegram test with supplied
+  credentials, Russian client/admin UX, dated haircut slots, map-link message
+  templates, self-service booking management, and admin schedule controls. The
+  process state and PID are not current public evidence.
+- Reminder delivery is wired into the tested runtime path: `app.main` starts
+  the reminder scheduler with the bot and due reminders use the Telegram send
+  boundary. A historical operator note recorded a service restart, but that
+  runtime state was not independently reverified from the public repository.
+  Reminder messages do not include appointment price.
 - Client menu includes an `О мастере` option that sends `IMG_9385.PNG` with
   the text from `about_me.md` and follow-up buttons for booking/contact.
 - Client menu includes `Рекомендации`; personal deep links are recorded through

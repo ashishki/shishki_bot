@@ -312,7 +312,7 @@ Status: append-only
 - Scope: `app/services/booking.py`, `app/bot/handlers/client.py`, `app/bot/handlers/admin.py`, booking/client/admin tests, admin docs, handoff docs, and live local SQLite schedule data.
 - Why: Admin needs a practical way to create complex/manual bookings, client contact-intent needs to be visible in client cards, and active bookings must hide every overlapping self-booking slot, not only the exact starting slot.
 - Decisions applied: `D-002`, `D-003`, `D-004`
-- Evidence collected: targeted booking/client/admin tests; ruff check; ruff format --check; full pytest passed with 79 tests; integrity check; skill security gate; systemd service restarted and active.
+- Evidence collected: targeted booking/client/admin tests; ruff check; ruff format --check; full pytest passed with 79 tests; integrity check; skill security gate; a historical operator note recorded a service restart, which is not independently reverified.
 - Historical operator note: a private database backup was recorded under ID `before-official-slots-20260624` before test rows and schedule fixtures were changed. The backup and runtime database are not public evidence.
 - Official slots: 2026-06-28 Sunday hourly starts 13:00 through 19:00; 2026-07-04 Saturday hourly starts 10:00 through 19:00; place is `Сулхана Цинцадзе 22, м. Технический Университет`.
 - Follow-ups: Smoke-test `/book`, `/admin` -> `Клиенты`, and the client stale-slot conflict in Telegram before a large announcement.
@@ -323,7 +323,7 @@ Status: append-only
 - Scope: `app/bot/handlers/client.py`, `tests/test_client_handlers.py`, and client-booking docs.
 - Why: Client self-booking confirmed appointments but did not notify the admin, and client-driven reschedule/cancel events also needed explicit admin visibility.
 - Decisions applied: `D-002`, `D-004`
-- Evidence collected: targeted client handler tests; ruff check; ruff format --check; full pytest passed with 81 tests; integrity check; skill security gate; systemd service restarted and active.
+- Evidence collected: targeted client handler tests; ruff check; ruff format --check; full pytest passed with 81 tests; integrity check; skill security gate; a historical operator note recorded a service restart, which is not independently reverified.
 - Data operation: found 1 existing booking without an `admin_new_booking` log, sent one backfill admin notification, and recorded a `sent` notification log.
 - Follow-ups: Monitor `notification_logs` for `admin_new_booking`, `admin_booking_rescheduled`, and `admin_booking_cancelled` rows after live client actions.
 - Notes: No schema migration. Admin notifications are sent after the booking transaction commits; delivery success/failure is stored as `NotificationLog` rows and does not cancel the client booking.
