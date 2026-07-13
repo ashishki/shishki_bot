@@ -1,0 +1,33 @@
+{
+  "schema_version": "shishki-bot-public-operating-status-v1",
+  "as_of": "2026-07-13",
+  "scope": "public-clean-clone",
+  "project_role": "deterministic single-stylist booking and operations reference",
+  "publicly_verified_counts": {
+    "current_deployments": 0,
+    "current_operators": 0,
+    "real_clients": 0,
+    "real_bookings": 0,
+    "outcome_metrics": 0
+  },
+  "supported_claims": [
+    "repository tests exercise deterministic booking and operations behavior with fixtures",
+    "automated tests do not require real Telegram delivery or real client data",
+    "LLM inference is absent from booking, authorization, reminder, and finance decisions"
+  ],
+  "blocked_claims": [
+    "current deployment",
+    "current operator use",
+    "real client adoption",
+    "share of bookings handled",
+    "zero double bookings in operation",
+    "uptime or incident rate",
+    "revenue or business impact"
+  ],
+  "historical_private_notes": {
+    "independently_reverified": false,
+    "private_backups_published": false,
+    "runtime_database_published": false,
+    "counted_as_public_evidence": false
+  }
+}
