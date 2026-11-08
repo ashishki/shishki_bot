@@ -1,0 +1,25 @@
+{
+  "schema_version": "playbook.practice_sources.v1",
+  "enabled": [
+    "handoff",
+    "task-and-proof"
+  ],
+  "meaning": "Instruction-only source copies; unavailable local links labeled as upstream references.",
+  "files": {
+    ".playbook/library/docs/runtime_verification_protocol.md": {
+      "source": "docs/runtime_verification_protocol.md",
+      "source_sha256": "184e7d51a4272c8d3dadf7df0212ab8a7132076c9ca2babac15450f9747f93dc",
+      "sha256": "184e7d51a4272c8d3dadf7df0212ab8a7132076c9ca2babac15450f9747f93dc"
+    },
+    ".playbook/library/docs/testing/test_first_protocol.md": {
+      "source": "docs/testing/test_first_protocol.md",
+      "source_sha256": "32013b378b19afc70930483bb5f9fdb214b6b4314288d907f9bc56f8dafa9acf",
+      "sha256": "32013b378b19afc70930483bb5f9fdb214b6b4314288d907f9bc56f8dafa9acf"
+    },
+    ".playbook/library/docs/workflow_continuity_retrofit.md": {
+      "source": "docs/workflow_continuity_retrofit.md",
+      "source_sha256": "9440a38b59ccbcfd35181507eeda6495df8e52d29995699af56c8dc3c9a3ef92",
+      "sha256": "9440a38b59ccbcfd35181507eeda6495df8e52d29995699af56c8dc3c9a3ef92"
+    }
+  }
+}

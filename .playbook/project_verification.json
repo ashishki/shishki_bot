@@ -1,0 +1,73 @@
+{
+  "checks": [
+    {
+      "argv": [
+        "{python}",
+        "-m",
+        "ruff",
+        "check",
+        "app",
+        "tests"
+      ],
+      "expected_exit_code": 0,
+      "id": "project_verification",
+      "required": true,
+      "timeout_seconds": 600
+    },
+    {
+      "argv": [
+        "{python}",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "app",
+        "tests"
+      ],
+      "expected_exit_code": 0,
+      "id": "project_verification_2",
+      "required": true,
+      "timeout_seconds": 600
+    },
+    {
+      "argv": [
+        "{python}",
+        "-m",
+        "pytest",
+        "tests",
+        "-q"
+      ],
+      "expected_exit_code": 0,
+      "id": "project_verification_3",
+      "required": true,
+      "timeout_seconds": 600
+    },
+    {
+      "argv": [
+        "{python}",
+        "tools/integrity_check.py",
+        "--root",
+        "."
+      ],
+      "expected_exit_code": 0,
+      "id": "project_verification_4",
+      "required": true,
+      "timeout_seconds": 600
+    },
+    {
+      "argv": [
+        "{python}",
+        "tools/skill_security_gate.py",
+        "--root",
+        ".",
+        "--discover-agent-skills",
+        "--require-scanner"
+      ],
+      "expected_exit_code": 0,
+      "id": "project_verification_5",
+      "required": true,
+      "timeout_seconds": 600
+    }
+  ],
+  "schema_version": "playbook.project_verification.v1"
+}

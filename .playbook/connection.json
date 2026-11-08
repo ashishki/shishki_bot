@@ -1,0 +1,89 @@
+{
+  "schema_version": "playbook.connection.v1",
+  "source": {
+    "checkout": "/home/ashishki/Documents/dev/ai-stack/projects/AI_workflow_playbook",
+    "commit": "d8395ca18fc3548eaed9ba1dc8d0f650bad87a65",
+    "content_sha256": "7afe0496beb4d85d24ae66246aca1514a06ad201f33187e4c845961c06cfad4e"
+  },
+  "enabled_practices": [
+    "handoff",
+    "task-and-proof"
+  ],
+  "recipe": {
+    "kind": "retrofit",
+    "verify_argvs": [
+      [
+        "{python}",
+        "-m",
+        "ruff",
+        "check",
+        "app",
+        "tests"
+      ],
+      [
+        "{python}",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "app",
+        "tests"
+      ],
+      [
+        "{python}",
+        "-m",
+        "pytest",
+        "tests",
+        "-q"
+      ],
+      [
+        "{python}",
+        "tools/integrity_check.py",
+        "--root",
+        "."
+      ],
+      [
+        "{python}",
+        "tools/skill_security_gate.py",
+        "--root",
+        ".",
+        "--discover-agent-skills",
+        "--require-scanner"
+      ]
+    ]
+  },
+  "managed": {
+    "docs/PLAYBOOK_GUIDE.md": {
+      "kind": "file",
+      "sha256": "779c4a4c75087f8d42819e2f8eccc81508b934988d26e4ab10afb2d7fce9ea50"
+    },
+    ".playbook/library/docs/runtime_verification_protocol.md": {
+      "kind": "file",
+      "sha256": "184e7d51a4272c8d3dadf7df0212ab8a7132076c9ca2babac15450f9747f93dc"
+    },
+    ".playbook/library/docs/testing/test_first_protocol.md": {
+      "kind": "file",
+      "sha256": "32013b378b19afc70930483bb5f9fdb214b6b4314288d907f9bc56f8dafa9acf"
+    },
+    ".playbook/library/docs/workflow_continuity_retrofit.md": {
+      "kind": "file",
+      "sha256": "9440a38b59ccbcfd35181507eeda6495df8e52d29995699af56c8dc3c9a3ef92"
+    },
+    ".playbook/practice_sources.json": {
+      "kind": "file",
+      "sha256": "99f1afd2346dbc2d0f02d47318e14c681356ed1c55cf536e10b6c8dace2cfabd"
+    },
+    "tools/verify_project.py": {
+      "kind": "file",
+      "sha256": "fec5dd340ecfbe6b96268ff4f8b0e1037a956d61f7541032d85f20ff6091eadd"
+    },
+    "AGENTS.md": {
+      "kind": "block",
+      "sha256": "0af913418a4e770b0474e381b8c3f6f8003d2ce01a84429749915d64970700dc"
+    },
+    "CLAUDE.md": {
+      "kind": "block",
+      "sha256": "0af913418a4e770b0474e381b8c3f6f8003d2ce01a84429749915d64970700dc"
+    }
+  }
+}
